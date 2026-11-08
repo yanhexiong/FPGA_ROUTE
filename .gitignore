@@ -1,0 +1,8 @@
+# 仿真产物
+sim
+wave.vcd
+vectors.hex
+sim_build/
+results.xml
+*.fst
+__pycache__/
