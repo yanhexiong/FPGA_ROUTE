@@ -1,0 +1,34 @@
+# 推送 frontend 分支后，自动把路线页面发布到 GitHub Pages（自定义域名 fpga.yahenix.top）
+name: 发布路线页面
+
+on:
+  push:
+    branches: [frontend]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: 打包 dist/
+        run: ./build.sh
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+      - name: 发布
+        id: deployment
+        uses: actions/deploy-pages@v4

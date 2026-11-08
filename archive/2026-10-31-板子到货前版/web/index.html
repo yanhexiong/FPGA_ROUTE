@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FPGA 部署 AI 路线</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='2' y='2' width='12' height='12' rx='1' fill='%231D6A54'/%3E%3Crect x='5' y='5' width='6' height='6' fill='%23E2B843'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- 非阻塞加载字体：网络不通时直接用系统字体，不影响打开速度 -->
+  <link rel="stylesheet" media="print" onload="this.media='all'"
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;900&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#stages">跳到阶段详情</a>
+
+  <header class="hero">
+    <div class="wrap">
+      <h1>从门电路到大模型</h1>
+      <p class="subtitle">FPGA 部署 AI 模型的学习路线</p>
+      <p class="lead">
+        为没有硬件基础的你设计：先在电脑上用仿真把基础打牢，板子到货后依次部署分类、检测、多模态和语言模型。
+        量化不是这条路线的重点：先用最常见的 INT8 量化自己跑通，重心放在把量化后的模型变成在 FPGA 上运行的电路。
+      </p>
+    </div>
+    <div class="wrap map-wrap">
+      <svg id="route-map" role="img" aria-labelledby="map-title"><title id="map-title">十个阶段的布线图，上排为无板期，下排为有板期，下方挂一条可选的 CUDA 支线</title></svg>
+      <p class="map-hint">点击模块跳到对应阶段。阶段全部勾完后，它后面的走线会亮起来。</p>
+    </div>
+  </header>
+
+  <section class="wrap brief" aria-label="概况">
+    <div class="brief-grid">
+      <div>
+        <p class="h3">起点</p>
+        <p>本科学过部分数电、模电，没有 HDL 和 FPGA 经验。默认你熟悉 Python 和 PyTorch。</p>
+      </div>
+      <div>
+        <p class="h3">终点</p>
+        <p>能把量化稀疏后的分类、检测、多模态和语言模型部署到 FPGA，并能自己设计加速器。</p>
+      </div>
+      <div>
+        <p class="h3">分工</p>
+        <p>量化同学的进度不确定，路线不等他：前期用公开工具自己做最常见的 INT8 量化，按一份<a href="#contract">默认格式约定</a>推进。他的成果到了再替换、对比。</p>
+      </div>
+    </div>
+
+    <div class="planner" id="planner">
+      <p class="h3">工作量</p>
+      <div class="hour-bar" id="hour-bar" aria-label="各阶段小时数占比"></div>
+      <p class="plan-out" id="plan-out"></p>
+      <p class="plan-tip">
+        小时数是按零基础估算的，误差可能有三到五成，做完 S1 后可以按实际用时校准。
+        时间零碎时这样安排：只有 1 小时，就做标着“1 小时可做”的任务，比如刷题、读论文、做统计；
+        有半天的时候，留给装工具、跑综合、上板调试这类一旦中断就要重新进入状态的任务。
+        每次结束前在阶段笔记里写一句“下次从哪继续”，下次能省下十几分钟的回想时间。
+        资料上，S1、S2 优先用标着“中文”的资料降低门槛，S3 以后逐步过渡到英文原版和论文。
+      </p>
+    </div>
+  </section>
+
+  <div class="wrap layout">
+    <nav class="toc" aria-label="阶段目录">
+      <ol id="toc-list"></ol>
+      <ul class="toc-extra">
+        <li><a href="#stack">在 AI 系统栈中的位置</a></li>
+        <li><a href="#boards">板卡怎么选</a></li>
+        <li><a href="#skills">硬件周边技能要不要学</a></li>
+        <li><a href="#contract">量化与数据格式约定</a></li>
+        <li><a href="#general">总体讨论</a></li>
+      </ul>
+      <p class="save-status" id="save-status" aria-live="polite"></p>
+    </nav>
+
+    <main id="stages"></main>
+  </div>
+
+  <section class="wrap extra" id="stack">
+    <h2>这条路线在 AI 系统栈中的位置</h2>
+    <p class="section-lead">
+      AI infra 自上而下大致分六层。这条路线以最底下的硬件层为主体，向上覆盖算子、编译和运行时三层，可以算作 FPGA 版的 AI infra 下半部分。
+      每个阶段标题下的层次标签对应这里的分层，第一个是主要层次。下面每层列出的阶段里，加粗的是以该层为主的阶段。
+    </p>
+    <ol class="stack" id="stack-list"></ol>
+  </section>
+
+  <section class="wrap extra" id="boards">
+    <h2>板卡怎么选</h2>
+    <p class="section-lead">
+      板子到货前不必着急，前五个阶段和后面阶段里标着“仿真”的任务都不需要板子。
+      如果只能先买一块，选 KV260；LLM 阶段再另外申请 HBM 板卡。价格随渠道波动，表中只给量级。
+    </p>
+    <div class="table-scroll">
+      <table class="boards">
+        <thead>
+          <tr><th>板卡</th><th>芯片</th><th>关键资源</th><th>价格</th><th>覆盖阶段</th><th>说明</th></tr>
+        </thead>
+        <tbody id="board-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap extra" id="skills">
+    <h2>硬件周边技能要不要学</h2>
+    <p class="section-lead">
+      FPGA 和嵌入式领域的技能很多，但你的目标是部署 AI 模型。判断标准只有一个：它会不会出现在“模型 → 加速器 → 板上运行”这条链路上。
+    </p>
+    <ul class="skills" id="skill-list"></ul>
+  </section>
+
+  <section class="wrap extra" id="contract">
+    <h2>量化与数据格式约定</h2>
+    <p class="section-lead">
+      量化结果的格式直接决定硬件怎么设计。每一项都先按最常见的默认做法来，自己用公开工具完成量化，不等量化同学；
+      跑通之后再尝试后面列的方向，同学的成果到了再对照替换。勾选表示这一项已经按默认值落实。
+    </p>
+    <ul class="contract" id="contract-list"></ul>
+  </section>
+
+  <section class="wrap extra" id="general">
+    <h2>总体讨论</h2>
+    <p class="section-lead">对整条路线的疑问、想调整的地方写在这里。和各阶段下的笔记一起，自动保存到 <code>notes/讨论记录.md</code>。</p>
+    <textarea id="general-notes" class="notes big" rows="8" placeholder="例如：实验室能拿到哪块板？哪个阶段想多花时间？"></textarea>
+    <div class="print-notes" data-print-note="general"></div>
+  </section>
+
+  <footer class="wrap foot">
+    <p>各阶段小时数为零基础下的估算投入。路线内容在 <code>web/data.js</code>，改完刷新页面即可；运行 <code>./make_pdf.sh</code> 可重新导出 PDF。</p>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

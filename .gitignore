@@ -1,0 +1,13 @@
+# 配套实验在 main 分支，本地用 git worktree 检出到 labs/
+labs/
+
+# 工具产生的临时文件
+.playwright-mcp/
+__pycache__/
+*.pyc
+.wrangler/
+dist/
+node_modules/
+
+# 本地服务写临时文件时的前缀
+notes/.tmp-*

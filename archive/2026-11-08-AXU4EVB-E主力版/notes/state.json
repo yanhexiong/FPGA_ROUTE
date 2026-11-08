@@ -1,0 +1,15 @@
+{
+  "checks": {
+    "s1-0": true,
+    "s0-0": true,
+    "s0-1": true,
+    "s0-2": true,
+    "s0-3": true,
+    "s1-1": false
+  },
+  "contract": {},
+  "notes": {
+    "s0": "两者都侧重，如果后期做论文就会侧重软硬件协同。\n实验室应该是做AMD方向的板卡。"
+  },
+  "general": ""
+}
