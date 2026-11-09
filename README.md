@@ -33,7 +33,7 @@ pip install cocotb numpy                              # S1-04 起用 Python 写�
 
 | 目录 | 对应任务 | 内容 |
 |---|---|---|
-| `s1/01_first_tb/` | 装好仿真工具，跑通第一个 testbench | 完整示例：计数器 + testbench，读懂后自己加一项检查 |
+| `s1/01_first_tb/` | 装好仿真工具，跑通第一个 testbench | 完整示例：计数器 + testbench，读懂后自己加一项检查，用 `make check` 检验 |
 | `s1/02_fifo/` | 带 valid/ready 握手的同步 FIFO | 规格 + 接口 + 验收测试，你写 FIFO |
 | `s1/03_mac/` | INT8 乘加单元 | 规格 + 接口 + Python 参考模型 + 验收测试，你写 MAC |
 | `s1/04_systolic_cocotb/` | 4×4 脉动阵列，cocotb 验证 | 规格 + 接口 + cocotb 测试，你写 PE 和阵列 |
