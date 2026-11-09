@@ -620,6 +620,11 @@ table.targets { border-collapse: collapse; width: 100%; min-width: 620px; max-wi
 .tasks .how-steps li, .tasks .how-steps li:first-child { border: 0; }
 .how-done { margin: 0 0 4px; }
 .how-done b { margin-right: 8px; color: var(--board); }
+.how-refs { margin: 0 0 6px; font-size: 0.875rem; }
+.how-refs b { color: var(--board); }
+.how-refs ul { margin: 4px 0 0; padding-left: 20px; }
+.tasks .how-refs li, .tasks .how-refs li:first-child { border: 0; padding: 2px 0; }
+.how-refs .res-note { display: block; color: var(--ink-2); font-size: 0.8125rem; }
 .how-lab { margin: 0; font-size: 0.875rem; color: var(--ink-2); }
 .how-lab code { font-size: 0.8125rem; }
 .how-print { display: none; }

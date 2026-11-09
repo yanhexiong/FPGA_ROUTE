@@ -272,10 +272,14 @@
     const lab = h.lab
       ? `<p class="how-lab">配套目录：<a href="${esc(R.repo)}/tree/main/${esc(h.lab)}" target="_blank" rel="noopener"><code>${esc(h.lab)}</code></a>（仓库 main 分支，<code>git clone ${esc(R.repo)}.git</code> 即可拿到），详细说明见目录里的 README</p>`
       : "";
+    const refs = h.refs && h.refs.length
+      ? `<div class="how-refs"><b>参考资料</b><ul>${h.refs.map((r) => `<li>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}${r.note ? `<span class="res-note">${esc(r.note)}</span>` : ""}</li>`).join("")}</ul></div>`
+      : "";
     const body = `
       ${h.why ? `<p class="how-why">${esc(h.why)}</p>` : ""}
       <ol class="how-steps">${h.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
       ${h.done ? `<p class="how-done"><b>做完的标志</b>${esc(h.done)}</p>` : ""}
+      ${refs}
       ${lab}`;
     return `<details class="how"><summary>怎么做</summary><div class="how-body">${body}</div></details>
       <div class="how-print">${body}</div>`;
