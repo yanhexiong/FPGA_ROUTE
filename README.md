@@ -29,15 +29,18 @@ pip install cocotb numpy                              # 自 S1-04 起使用 Pyth
 
 安装完成后，运行 `iverilog -V` 与 `cocotb-config --version`，能够显示版本号即为安装成功。Verilator 仿真速度更快，但语法检查更为严格，建议在完成 S1 之后再安装。
 
+自 S1-05 起需要 Vivado，安装方法见 [`setup/vivado.md`](setup/vivado.md)，其中分别给出了 Windows 与 Ubuntu（实体机或 KVM 虚拟机）两类环境的安装步骤。
+
 ## 目录
 
 | 目录 | 对应任务 | 内容 |
 |---|---|---|
+| `setup/` | 环境配置 | Vivado 2023.1 安装指南（Windows 与 Ubuntu 两类环境）及安装检查脚本 |
 | `s1/01_first_tb/` | 安装仿真工具，运行第一个 testbench | 完整示例：计数器及其 testbench。读懂后自行增加一项检查，并以 `make check` 检验 |
 | `s1/02_fifo/` | 带 valid/ready 握手的同步 FIFO | 背景知识、规格、接口与验收测试；实验者实现 FIFO |
 | `s1/03_mac/` | INT8 乘加单元 | 规格、接口、Python 参考模型与验收测试；实验者实现 MAC |
 | `s1/04_systolic_cocotb/` | 4×4 脉动阵列，以 cocotb 验证 | 规格、接口与 cocotb 测试；实验者实现 PE 与阵列 |
-| `s1/05_led_board/` | 第一个上板实验 | Vivado 操作步骤：先在 AXU4EVB-E 上完成，再移植到 FZ5D，并填写差异表 |
+| `s1/05_led_board/` | 第一个上板实验 | 流水灯 RTL 与 testbench（`make` 判题）；在 EdgeBoard FZ5D 上配置 PS、运行 Vitis 裸机程序、驱动 RUN 灯，并以 VIO 观察 PL 流水灯；再在 AXU4EVB-E 上对照，填写差异表 |
 
 S2 及以后各阶段的实验目录将在进入相应阶段时补充，以便根据实际进度调整。
 
