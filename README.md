@@ -39,7 +39,7 @@ pip install cocotb numpy                              # 自 S1-04 起使用 Pyth
 | `s1/01_first_tb/` | 安装仿真工具，运行第一个 testbench | 完整示例：计数器及其 testbench。读懂后自行增加一项检查，并以 `make check` 检验 |
 | `s1/02_fifo/` | 带 valid/ready 握手的同步 FIFO | 背景知识、规格、接口与验收测试；实验者实现 FIFO |
 | `s1/03_mac/` | INT8 乘加单元 | 规格、接口、Python 参考模型与验收测试；实验者实现 MAC |
-| `s1/04_systolic_cocotb/` | 4×4 脉动阵列，以 cocotb 验证 | 规格、接口与 cocotb 测试；实验者实现 PE 与阵列 |
+| `s1/04_systolic_cocotb/` | 4×4 脉动阵列，以 cocotb 验证 | 背景知识（矩阵乘法、脉动阵列原理与输入错位、`generate` 语法、cocotb 简介）、规格、接口与 cocotb 测试；实验者实现 PE 与阵列 |
 | `s1/05_led_board/` | 第一个上板实验 | 流水灯 RTL 与 testbench（`make` 判题）；在 EdgeBoard FZ5D 上配置 PS、运行 Vitis 裸机程序、驱动 RUN 灯，并以 VIO 观察 PL 流水灯；再在 AXU4EVB-E 上对照，填写差异表 |
 
 S2 及以后各阶段的实验目录将在进入相应阶段时补充，以便根据实际进度调整。
