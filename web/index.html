@@ -34,7 +34,7 @@
     <div class="brief-grid">
       <div>
         <p class="h3">起点</p>
-        <p>有 AI 基础，熟悉 Python 和 PyTorch；本科学过部分数电、模电，没有 HDL 和 FPGA 经验。手上有两块板：主力是实验室里你独占的 EdgeBoard FZ5D，自己的 ALINX AXU4EVB-E 用来对照，体会不同硬件环境的差别。</p>
+        <p>有 AI 基础，熟悉 Python 和 PyTorch；本科学过部分数电、模电，没有 HDL 和 FPGA 经验。本路线以 EdgeBoard FZ5D 为必备开发板；ALINX AXU4EVB-E 是选做的对照板，有则可在各阶段再做一遍，体会不同硬件环境的差别，没有也不影响任何阶段的完成。</p>
       </div>
       <div>
         <p class="h3">终点</p>
@@ -138,24 +138,24 @@
   </section>
 
   <section class="wrap extra" id="boards">
-    <h2>你的板卡：EdgeBoard FZ5D 主力，AXU4EVB-E 对照</h2>
+    <h2>开发板：EdgeBoard FZ5D 必备，AXU4EVB-E 选做对照</h2>
     <p class="section-lead">
-      主线在 FZ5D 上走；每个阶段挑一件事在 AXU4EVB-E 上再做一遍，体会换一个硬件环境要改什么、性能怎么变。
+      主线全部在 FZ5D 上完成，所有必做的上板实验只需要这一块板。若另有 AXU4EVB-E，每个阶段可挑一件事在其上再做一遍，体会换一个硬件环境要改什么、性能怎么变；这些任务标注“选做”，不计入进度。
       两块板芯片同代、PS 侧内存带宽相同，差别在 DSP 数量、内存容量、有没有 PL 侧 DDR、厂家资料和接口，每一项差别都对应一个能做的对照实验。
     </p>
     <p class="h3 board-name" id="lab-board-name"></p>
     <p class="board-lead" id="lab-board-lead"></p>
     <div class="board-grid" id="lab-board"></div>
-    <p class="h3 board-name later-title">对照板：ALINX AXU4EVB-E V3.0</p>
+    <p class="h3 board-name later-title">选做对照板：ALINX AXU4EVB-E V3.0</p>
     <p class="board-lead">
-      2026 年 11 月到货，当时在 S1。核心板参数来自 ALINX 的 ACU4EV 核心板手册，芯片资源来自 AMD 的选型资料；
+      没有这块板不影响任何阶段的完成。核心板参数来自 ALINX 的 ACU4EV 核心板手册，芯片资源来自 AMD 的选型资料；
       载板上的接口（MIPI、HDMI/DP 等）我没能读到这块板的手册原文，请以 ALINX 官方手册为准。
     </p>
     <div class="board-grid" id="my-board"></div>
-    <p class="h3 later-title">两块板怎么配合</p>
+    <p class="h3 later-title">两块板怎么配合（对照部分为选做）</p>
     <div class="table-scroll">
       <table class="boards board-split">
-        <thead><tr><th>阶段</th><th>在 FZ5D 上做</th><th>在 AXU4EVB-E 上对照，体会什么</th></tr></thead>
+        <thead><tr><th>阶段</th><th>在 FZ5D 上做</th><th>有 AXU4EVB-E 时的对照（选做），体会什么</th></tr></thead>
         <tbody id="board-split"></tbody>
       </table>
     </div>

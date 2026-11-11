@@ -31,9 +31,11 @@
     const p = progress(s);
     return (s.hours * p.done) / p.total;
   }
+  // 选做任务（t.opt）不计入进度：没有对应开发板的读者也能走完整条主线
   function progress(s) {
-    const done = s.tasks.filter((_, i) => state.checks[taskKey(s, i)]).length;
-    return { done, total: s.tasks.length };
+    const req = s.tasks.map((t, i) => [t, i]).filter(([t]) => !t.opt);
+    const done = req.filter(([, i]) => state.checks[taskKey(s, i)]).length;
+    return { done, total: req.length };
   }
   function el(tag, attrs = {}, parent) {
     const n = document.createElementNS(SVGNS, tag);
@@ -158,11 +160,11 @@
       lt.textContent = "可选支线，穿插在 S8–S9 期间";
     }
 
-    // 板子到货的位置
+    // 开始需要开发板的位置
     {
-      const ai = R.myBoard.arrivedAt, b = L.blocks[ai];
+      const ai = R.labBoard.neededFrom, b = L.blocks[ai];
       const at = el("text", { x: b.x, y: b.y + b.h + 21, class: "arrive-label" }, wires);
-      at.textContent = `板子在 S${ai} 期间到货`;
+      at.textContent = `从 S${ai} 起需要 EdgeBoard FZ5D`;
     }
 
     // blocks
@@ -217,11 +219,10 @@
     const total = sum(STAGES.map((s) => s.hours));
     const done = Math.round(sum(STAGES.map(doneHours)));
     const cur = currentStage();
-    const mb = R.myBoard;
     $("#plan-out").innerHTML =
       `整条主线预计约 <strong>${total} 小时</strong>。按已勾选的任务估算，已完成约 <strong>${done} 小时</strong>，剩余约 ${total - done} 小时` +
       (cur ? `，当前在 <strong>S${STAGES.indexOf(cur)} ${esc(cur.short)}</strong>。` : "。") +
-      `板子（${esc(mb.name)}）已在 S${mb.arrivedAt} 期间到货，S1 到 S3 里已经插入上板实验，不必等到 S5。主力板是你独占的 EdgeBoard FZ5D，AXU4EVB-E 每个阶段做一次对照，体会换硬件环境的差别（见<a href="#boards">两块板怎么配合</a>）。` +
+      `主力板 EdgeBoard FZ5D 是必备的，S1 到 S3 里已经插入上板实验，不必等到 S5。AXU4EVB-E 是选做的对照板，没有它不影响任何阶段的完成，选做任务也不计入进度（见<a href="#boards">两块板怎么配合</a>）。` +
       `可选的 CUDA 支线另需约 ${BRANCH.hours} 小时，不计入主线。` +
       `<br>按<a href="#harness">和 AI 助手的分工</a>把重复性工作交出去，主线预计还能省约 <strong>${aiSaveTotal()} 小时</strong>，主要省在 S5 以后的工程胶水和实验脚本上。` +
       `终点指标：S9 在主力板上 0.5B INT4 模型解码预期 <strong>40–60 tok/s</strong>（见 <a href="#s9">S9 预期表</a>）。`;
@@ -293,7 +294,7 @@
         return `<li><label>
           <input type="checkbox" data-task="${k}" ${state.checks[k] ? "checked" : ""}>
           <span>${esc(t.t)}</span>
-          <span class="chips">${t.frag ? `<span class="chip frag">1 小时可做</span>` : ""}${envChip(s, t)}</span>
+          <span class="chips">${t.opt ? `<span class="chip opt">选做</span>` : ""}${t.frag ? `<span class="chip frag">1 小时可做</span>` : ""}${envChip(s, t)}</span>
         </label>${howBlock(t)}</li>`;
       }).join("");
       const res = s.resources.map((r) =>
@@ -392,7 +393,7 @@
       $("#lab-board").innerHTML = `
       <dl class="specs">${lb.specs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
       <div class="board-side">
-        <p class="h3">和 AXU4EVB-E 比</p>
+        <p class="h3">和选做对照板 AXU4EVB-E 比</p>
         <ul>${lb.vsMain.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
       </div>`;
       $("#board-split").innerHTML = lb.split.map(([st, who, what]) =>
@@ -485,7 +486,7 @@
     STAGES.forEach((s, si) => {
       const p = progress(s);
       lines.push(`## S${si} ${s.title}（${p.done}/${p.total}，约 ${s.hours} 小时）　层次：${s.layers.join("、")}`, "");
-      s.tasks.forEach((t, i) => lines.push(`- [${state.checks[taskKey(s, i)] ? "x" : " "}] ${t.t}${t.board ? "（需板）" : ""}${t.frag ? "（1 小时可做）" : ""}${t.how && t.how.lab ? `（配套 ${t.how.lab}）` : ""}`));
+      s.tasks.forEach((t, i) => lines.push(`- [${state.checks[taskKey(s, i)] ? "x" : " "}] ${t.t}${t.opt ? "（选做）" : ""}${t.board ? "（需板）" : ""}${t.frag ? "（1 小时可做）" : ""}${t.how && t.how.lab ? `（配套 ${t.how.lab}）` : ""}`));
       if (s.venue) lines.push("", `可投方向：${s.venue}`);
       if (s.harness) lines.push("", `AI 协同（预计省约 ${s.aiSave || 0} 小时）：自己做 ${s.harness.self.join("；")}｜交给 AI ${s.harness.ai.join("；")}｜别做 ${s.harness.skip.join("；")}`);
       const note = (state.notes[s.id] || "").trim();
