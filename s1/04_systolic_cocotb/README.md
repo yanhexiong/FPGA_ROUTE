@@ -283,13 +283,7 @@ end
 
 ## 实验步骤
 
-1. 安装 cocotb（建议安装在虚拟环境中）。Ubuntu 上须先安装 `python3-venv`，否则 `python3 -m venv` 会报错 `ensurepip is not available`：
-   ```bash
-   sudo apt install python3-venv python3-pip build-essential
-   python3 -m venv ~/venvs/hdl && source ~/venvs/hdl/bin/activate
-   pip install cocotb numpy
-   ```
-   此外须已安装 S1-01 中的 Icarus Verilog。
+1. 安装 Python 3 以及 cocotb 与 NumPy 两个包（`pip install cocotb numpy`），Python 环境的组织方式不限。本实验在 cocotb 2.1.0 上验证。此外须已安装 S1-01 中的 Icarus Verilog，以及 `make`。
 2. 阅读「背景知识」，并核对「数值示例：2×2」中每一格的数值。随后自行推演一次：取 A 为 4×4 的单位矩阵，B 为任意矩阵，写出前 3 个周期中 PE(0,0)、PE(0,1)、PE(1,1) 分别接收到哪两个数。此步骤是理解后续波形的基础，不应跳过。
 3. 实现 `pe.v`：在 S1-03 的 MAC 基础上去掉 `in_valid`，增加两个传递寄存器，并按「功能」一节的优先级编写。对照「示例时序」逐行核对。
 4. 实现 `systolic4x4.v`：以二维 wire 数组表示 PE 之间的连线，以两层 `genvar` 循环例化 16 个 PE。
@@ -331,7 +325,7 @@ end
 
 ## 与后续内容的关系
 
-- S2：将本阵列分别综合到 FZ5D 的 XCZU5EV 与 AXU4EVB-E 的 XCZU4EV 上，观察 16 个乘法器如何映射到 DSP 单元；再逐步扩展至 8×8、16×16，观察资源占用与最高频率的变化。
+- S2：将本阵列分别综合到 FZ5D 的 XCZU5EV 与 XCZU4EV（AXU4EVB-E 所用的芯片，只需 Vivado 的器件库，不需要该开发板）上，观察 16 个乘法器如何映射到 DSP 单元；再逐步扩展至 8×8、16×16，观察资源占用与最高频率的变化。
 - S4：输出驻留只是数据流（dataflow）的一种，此外还有权重驻留、行驻留等方式，各有其适用场合与代价；利用率与访存带宽的计算亦将在 S4 展开。
 
 ## 参考资料

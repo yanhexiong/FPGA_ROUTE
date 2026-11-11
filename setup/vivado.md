@@ -15,7 +15,7 @@ Vivado 是 AMD（原 Xilinx）的 FPGA 开发工具，用于完成综合、实�
 
 本路线暂定使用 **2023.1**，Vivado、Vitis、PetaLinux 版本保持一致。选择该版本的原因是：2023.1 是 Vitis AI 3.5 与 DPU 4.1 官方验证过的工具版本，S6 部署 DPU 时须使用与之匹配的版本。若 2023.1 在使用中出现无法解决的问题，再整体升级到更新的版本，届时本指南将同步更新。
 
-两块开发板的芯片 XCZU5EV（EdgeBoard FZ5D）与 XCZU4EV（AXU4EVB-E）均属于 Vivado 免费版（Vivado ML Standard Edition）支持的器件，UG973 的 Supported Devices 一节列出了这两款器件；免费版自 2016 版起无需许可证文件。安装完成后，可用本目录的检查脚本加以确认，见「安装验证」。
+必备开发板 EdgeBoard FZ5D 的芯片 XCZU5EV，以及选做对照板 AXU4EVB-E 的芯片 XCZU4EV，均属于 Vivado 免费版（Vivado ML Standard Edition）支持的器件，UG973 的 Supported Devices 一节列出了这两款器件；免费版自 2016 版起无需许可证文件。安装完成后，可用本目录的检查脚本加以确认，见「安装验证」。
 
 开发板厂商（如 MYIR）的手册与示例工程多基于 Vivado/Vitis 2020.1。这些示例工程不宜在 2023.1 中直接沿用，应依据手册中的参数在 2023.1 中重新建立，或在 Vivado 中升级 IP 后再使用。
 
@@ -115,7 +115,7 @@ Ubuntu 24.04 不在 Vivado 2023.1 的官方支持列表中，但通常可以安�
 本目录下的 `vivado_check.tcl` 依次完成以下检查：
 
 1. 输出 Vivado 版本；
-2. 列出已安装的 XCZU5EV 与 XCZU4EV 器件，确认器件库安装完整；
+2. 列出已安装的 XCZU5EV 与 XCZU4EV 器件，确认器件库安装完整（XCZU4EV 仅用于选做的对照实验与芯片对比，缺失时只给出警告）；
 3. 以 XCZU5EV 为目标，对 `s1/01_first_tb/counter.v` 执行一次综合，确认免费版许可可以覆盖该器件。
 
 运行方法：

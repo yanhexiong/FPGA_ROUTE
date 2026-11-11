@@ -19,13 +19,17 @@ cd FPGA_ROUTE/s1/01_first_tb && make
 
 验收测试的作用与 HDLBits 的判题程序相同：完成电路后运行 `make`，输出 PASS 即为通过。未通过时，应从第一条 FAIL 所示的时刻开始分析波形。
 
+## 开发板
+
+本仓库以 EdgeBoard FZ5D 为**必备**开发板：所有必做的上板实验均在 FZ5D 上完成。ALINX AXU4EVB-E 仅用于**选做**的对照实验，用于体会更换开发板时须修改的内容；没有该板不影响任何实验与阶段的完成。选做的内容在各实验的说明中以“选做”标出。
+
 ## 环境配置（Ubuntu）
 
 ```bash
 sudo apt install iverilog gtkwave build-essential   # 仿真器、波形查看器、make
-python3 -m venv ~/venvs/hdl && source ~/venvs/hdl/bin/activate
-pip install cocotb numpy                              # 自 S1-04 起使用 Python 编写测试
 ```
+
+自 S1-04 起使用 Python 编写测试，须另行安装 Python 3 以及 cocotb 与 NumPy 两个包（`pip install cocotb numpy`），Python 环境的组织方式不限。
 
 安装完成后，运行 `iverilog -V` 与 `cocotb-config --version`，能够显示版本号即为安装成功。Verilator 仿真速度更快，但语法检查更为严格，建议在完成 S1 之后再安装。
 
@@ -40,7 +44,7 @@ pip install cocotb numpy                              # 自 S1-04 起使用 Pyth
 | `s1/02_fifo/` | 带 valid/ready 握手的同步 FIFO | 背景知识、规格、接口与验收测试；实验者实现 FIFO |
 | `s1/03_mac/` | INT8 乘加单元 | 规格、接口、Python 参考模型与验收测试；实验者实现 MAC |
 | `s1/04_systolic_cocotb/` | 4×4 脉动阵列，以 cocotb 验证 | 背景知识（矩阵乘法、脉动阵列原理与输入错位、`generate` 语法、cocotb 简介）、规格、接口与 cocotb 测试；实验者实现 PE 与阵列 |
-| `s1/05_led_board/` | 第一个上板实验 | 流水灯 RTL 与 testbench（`make` 判题）；在 EdgeBoard FZ5D 上配置 PS、运行 Vitis 裸机程序、驱动 RUN 灯，并以 VIO 观察 PL 流水灯；再在 AXU4EVB-E 上对照，填写差异表 |
+| `s1/05_led_board/` | 第一个上板实验 | 流水灯 RTL 与 testbench（`make` 判题）；在 EdgeBoard FZ5D 上配置 PS、运行 Vitis 裸机程序、驱动 RUN 灯，并以 VIO 观察 PL 流水灯；选做：在 AXU4EVB-E 上对照，填写差异表 |
 
 S2 及以后各阶段的实验目录将在进入相应阶段时补充，以便根据实际进度调整。
 

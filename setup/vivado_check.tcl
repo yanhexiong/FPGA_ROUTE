@@ -9,7 +9,7 @@
 #
 # Checks:
 #   1. Vivado version (the labs assume 2023.1)
-#   2. XCZU5EV and XCZU4EV device libraries are installed
+#   2. XCZU5EV (required) and XCZU4EV (optional contrast chip) device libraries are installed
 #   3. A small synthesis run on XCZU5EV succeeds (device and free license OK)
 # Prints "CHECK PASSED" at the end when everything succeeds.
 # This file is ASCII-only on purpose, so the Windows console shows it correctly.
@@ -28,8 +28,12 @@ if {$ver ne "2023.1"} {
 foreach fam {xczu5ev xczu4ev} {
     set parts [get_parts -quiet "${fam}*"]
     if {[llength $parts] == 0} {
-        puts "ERROR: no $fam parts installed. Re-run the installer and select Zynq UltraScale+ MPSoC."
-        set ok 0
+        if {$fam eq "xczu5ev"} {
+            puts "ERROR: no $fam parts installed. Re-run the installer and select Zynq UltraScale+ MPSoC."
+            set ok 0
+        } else {
+            puts "WARN: no $fam parts installed. Only the optional AXU4EVB-E contrast and chip comparisons need it."
+        }
     } else {
         puts "INFO: $fam: [llength $parts] parts installed, e.g. [lindex $parts 0]"
     }

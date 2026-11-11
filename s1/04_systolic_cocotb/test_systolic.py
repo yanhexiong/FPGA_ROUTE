@@ -1,6 +1,6 @@
 """systolic4x4 的 cocotb 验收测试：以 Python 编写 testbench，以 NumPy 计算参考答案。
 
-运行：make（须先 pip install cocotb numpy，见 README「实验步骤」）
+运行：make（须先安装 cocotb 与 NumPy，见 README「实验步骤」）
 查看波形：make WAVES=1，波形文件位于 sim_build/ 目录，以 GTKWave 打开。
 
 本测试所做的工作与 Verilog testbench 相同：施加输入 → 等待时钟 → 读取输出 → 与参考答案比对。
