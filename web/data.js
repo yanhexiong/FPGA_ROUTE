@@ -73,7 +73,7 @@ window.ROUTE = {
         { t: "装好仿真工具（Icarus Verilog + GTKWave），跑通第一个 testbench：读懂配套目录 s1/01_first_tb 里现成的计数器测试，再自己加一项检查", frag: true, board: false, how: {"why": "硬件出了错很难在板上查原因，每个电路都要先在电脑上仿真。testbench 就是硬件的测试代码，相当于 pytest：产生时钟、给输入、和参考答案比对、导出波形。这个任务没有现成的 testbench 要你去找：配套目录里给了一个完整的示例，你读懂它，再自己加一项检查。", "steps": ["安装：sudo apt install iverilog gtkwave，运行 iverilog -V 能看到版本号。", "进入配套目录运行 make，终端打印 PASS。", "运行 make wave，在 GTKWave 里把 clk、rst、q 加进波形窗口，找到复位结束、15 回到 0、使能关闭这三个时刻。", "故意把计数器的 +1 改成 +2，看 testbench 怎么报错，再改回来。", "自己加一项检查：计数到一半时复位一拍，确认 q 回到 0，参考答案 golden 也跟着清零。", "运行 make check 检验这项检查。你不用改 counter.v：make check 会自动把被测电路依次换成 3 个版本，用你的同一份 testbench 各跑一遍，一次打印 3 项结果。正确的计数器应当 PASS（不误报）；两个变异体，即预先写好的错误计数器，应当 FAIL（不漏报）。变异体 M1 是复位优先级低于使能，M2 是复位只生效一次，原来的 testbench 都发现不了。"], "done": "make 打印 PASS；能说清 testbench 里六段代码各做什么；make check 的 3 项全部通过。", "lab": "s1/01_first_tb"} },
         { t: "实现带 valid/ready 握手的同步 FIFO，并完成仿真验证", frag: true, board: false, how: {"why": "在数据结构中，先进先出缓冲器（FIFO）即队列，其常见的软件实现为环形缓冲区：一个定长数组以及队头、队尾两个下标。本任务实现其硬件电路，由存储阵列与读、写两个指针构成。与软件实现相比，硬件 FIFO 有两点不同：其一，写入与读出由并行工作的两部分电路完成，二者可在同一时钟上升沿处同时发生；其二，电路不存在阻塞机制，FIFO 满或空时以 valid/ready 信号指示当前不可操作，这一机制称为反压（backpressure）。FIFO 是 AI 加速器中最常用的基础模块之一，S2 的 AXI4-Stream Data FIFO IP、S3 的 hls::stream 以及 S5 中 DMA 与计算单元之间的缓冲均为 FIFO。valid/ready 握手是 AXI4-Stream 协议规定的数据传输机制，S2、S3、S5 均以此为基础。", "steps": ["阅读配套目录 README 的「背景知识」：FIFO 的软件实现与硬件实现、valid/ready 握手协议、FIFO 的两个握手端口、空满状态的判定、读出时序的两种模式。", "完成 README 中的「逐周期时序分析练习」：对深度为 4 的 FIFO，逐周期填写数据个数、s_ready、m_valid 与 m_data，并与参考答案核对。周期 6 是关键情形：FIFO 已满且下游在该周期读出数据，按规格此时上游仍不能写入。", "画出电路结构图，包括存储阵列、读指针与写指针；从计数器法与扩展指针法中选定一种空满判定方法。", "实现 sync_fifo.v，其接口已经给定；tb_sync_fifo.v 为验收测试，不得修改。", "运行 make。若未通过，从第一条 FAIL 所示的时刻开始，对照波形进行分析。", "通过之后，回答 README 中的「思考题」，并阅读 ZipCPU 的 FIFO 教程，与自己的实现进行对照。"], "done": "「逐周期时序分析练习」全部填写正确；make 输出 PASS（写满、读空及 3000 个周期的随机读写均与参考模型一致）；能够画出所实现 FIFO 的结构图，说明空满状态的判定方法，并回答「思考题」。", "refs": [{"name": "ZipCPU：Building a basic FIFO", "url": "https://zipcpu.com/blog/2017/07/29/fifo.html", "note": "同步 FIFO 的逐步实现，包括空满判定与常见错误。文中给出完整代码，建议完成本任务后再阅读"}, {"name": "Arm：AMBA AXI4-Stream Protocol Specification（IHI 0051）", "url": "https://developer.arm.com/documentation/ihi0051/latest", "note": "valid/ready 握手规则的原文，见握手过程（handshake process）一节"}, {"name": "Cummings：Simulation and Synthesis Techniques for Asynchronous FIFO Design（SNUG 2002）", "url": "http://www.sunburst-design.com/papers/CummingsSNUG2002SJ_FIFO1.pdf", "note": "扩展指针法的出处；异步 FIFO（跨时钟域）部分可留待 S2 阅读"}, {"name": "AMD：FIFO Generator Product Guide（PG057）", "url": "https://docs.amd.com/r/en-US/pg057-fifo-generator", "note": "Vivado FIFO IP 的标准模式与首字直通模式时序图"}], "lab": "s1/02_fifo"} },
         { t: "实现 INT8 乘加单元（32 位累加器），以 Python 生成的随机数据验证", frag: true, board: false, how: {"why": "神经网络中的卷积、全连接与注意力运算，归结到最底层均为乘加运算 acc += a × b。INT8 量化之后，a、b 为 8 位有符号整数，计算机中的有符号整数一律以补码表示：最高位为符号位，其权重为 −2⁷，8 位补码的取值范围为 −128 至 127。Verilog 默认将信号视为无符号数，须以 signed 显式声明，且表达式中只要有一个操作数为无符号数，整个表达式即按无符号数计算。本任务同时引入后续实验沿用的验证方法：以 Python 计算参考答案，在硬件仿真中逐周期比对。", "steps": ["阅读配套目录 README 的「背景知识」：有符号整数的补码表示、符号扩展与零扩展、Verilog 中有符号运算的四条规则、测试向量的编码方式。", "阅读 README 的「题目」：端口表给出每个端口的方向、位宽与符号性；「复位」一节规定 rst 为同步复位、高电平有效、具有最高优先级；「功能」一节给出 acc 在每个上升沿的五级优先级更新规则。核对「示例时序」中每一行的 acc。", "按 README「代码框架」实现 mac.v。乘法与加法直接使用 Verilog 的 * 与 + 运算符，无需手工实现乘法器；本任务的重点是 acc 的更新控制与有符号数的处理。具体要求：时序逻辑写在 always @(posedge clk) 块中，敏感列表不含 rst，一律使用非阻塞赋值；中间变量须声明为 signed，且位宽足以容纳乘积。", "运行 make：先由 Python 生成 2000 个周期的测试向量，再运行仿真逐周期比对。若结果为很大的正数，通常是某处操作数被当作无符号数；若仅在 clear = 1 的周期出错，通常是优先级有误。", "通过之后，删除中间变量的 signed 声明再次运行，观察符号错误的具体表现，然后恢复原代码。"], "done": "make 输出 PASS；能够回答 README「思考题」：8 位补码乘积为何用 16 位即可表示，32 位累加器能否容纳 ResNet 单层的累加；能够修改 Python 脚本增加新的测试模式。", "refs": [{"name": "HDLBits：Vector concatenation operator、Replication operator", "url": "https://hdlbits.01xz.net/wiki/Vector3", "note": "拼接与复制运算符；本实验中，对有符号数拼接会使其变为无符号数"}, {"name": "D. M. Harris, S. L. Harris，《数字设计和计算机体系结构》第 1.4 节、第 5.2 节", "note": "补码表示与算术电路（加法器、乘法器）"}], "lab": "s1/03_mac"} },
-        { t: "安装 Vivado（版本见下方“待讨论”），做第一个上板实验：PL 侧 LED 流水灯加按键控制，走通 综合 → 比特流 → JTAG 下载。先在 AXU4EVB-E 上照 ALINX 教程跑通，再移植到主力板 FZ5D：从米尔原理图查哪些 LED、按键接在 PL 上，只改约束文件。这是第一次体会“同一份 RTL 换板子要改什么”", board: true, how: {"why": "走通一次 FPGA 的完整流程：RTL → 综合 → 实现 → 比特流 → JTAG 下载。再把同一份 RTL 移植到第二块板，体会换板要改什么。", "steps": ["在 Ubuntu 22.04 虚拟机里装 Vivado 2023.1：选 Vivado ML Standard，器件只勾 Zynq UltraScale+ MPSoC，可以省下大量磁盘。", "照 ALINX 的 LED 教程，记下 AXU4EVB-E 的芯片型号、PL 时钟、LED 和按键的引脚。", "自己写流水灯 RTL：分频到约 4 Hz，按键先经过两级寄存器同步，再控制暂停。", "写约束文件，综合、实现、生成比特流，在 Hardware Manager 里下载，LED 开始流动。", "查米尔原理图，RTL 不改，只重写约束文件，在 FZ5D 上再跑一遍；填配套目录里的差异表。"], "done": "两块板上的流水灯都能运行，按键能控制；有一张填好的两板差异表。", "lab": "s1/05_led_board"} },
+        { t: "安装 Vivado 2023.1，完成第一个上板实验：在 EdgeBoard FZ5D 上建立 PS 最小系统并运行 Vitis 裸机程序（串口输出、驱动 RUN 灯），再把流水灯下载到 PL，经 VIO 观察；最后在 AXU4EVB-E 上复用同一份 RTL，对照两板差异", board: true, how: {"why": "本任务完整走通 Zynq UltraScale+ 的开发流程：RTL 仿真 → 配置 PS → 综合与实现 → 比特流 → 导出 XSA → Vitis 裸机程序 → 通过 JTAG 下载。FZ5D 的 PL 侧没有用户 LED 与按键，唯一可由程序控制的 LED 是 PS 的 RUN 灯，因此实验以 PS 为起点，PL 的输出借助 VIO 调试核观察。AXU4EVB-E 的 PL 侧有 LED 与按键，同一份 RTL 在其上直接驱动板载元件，借此体会：RTL 保持不变，PS 配置、引脚与约束随开发板而变。", "steps": ["按配套仓库 setup/vivado.md 安装 Vivado 2023.1。该指南分别给出 Windows 与 Ubuntu（实体机或 KVM 虚拟机）两类环境的安装步骤；安装时产品选择 Vitis，器件只保留 Zynq UltraScale+ MPSoC。", "运行 setup/vivado_check.tcl，确认 Vivado 版本、XCZU5EV 与 XCZU4EV 器件库及免费版许可均正常，脚本输出 CHECK PASSED。", "仿真：在配套目录 s1/05_led_board 中实现 led_flow.v（四位独热码流水灯，pause 经两级寄存器同步），运行 make，输出 PASS。", "依据 FZ5D 的硬件资料（课程内部提供）与 MYIR 手册第 3.1 节，在 Vivado 2023.1 中新建工程（器件 xczu5ev-sfvc784-1-i），以 Block Design 配置 PS：I/O 电压、UART0（MIO26..27）、GPIO、pl_clk0 与 8 GB DDR4 参数；生成比特流并导出 XSA。", "将 SW1 拨至 JTAG 模式，连接 J1（JTAG）与 J13（调试串口），在 Vitis 中运行 hello_world，串口终端（115200，8N1）输出 Hello World。", "补全配套目录的 ps_led.c，用 PS 的 GPIO 驱动 RUN 灯（MIO42）以 1 Hz 闪烁，并每 0.5 s 经串口输出一行计数。", "将 led_flow 与 VIO 加入 Block Design，重新生成比特流；在 Vitis 中以 Program FPGA 方式运行程序，再于 Hardware Manager 中经 VIO 观察 led 的流动，并用 pause、rst 控制。", "对照实验：在 AXU4EVB-E 上复用未经修改的 led_flow.v，依据其硬件资料配置 PS 并编写 LED 与按键的约束文件，直接观察板载 LED；填写配套目录中的两板差异表。"], "done": "setup/vivado_check.tcl 输出 CHECK PASSED；make 输出 PASS；FZ5D 上串口输出 Hello World，RUN 灯闪烁，VIO 中 led 按规定流动并可由 pause、rst 控制，WNS 为正值；AXU4EVB-E 上板载 LED 流水并可由按键暂停；完成两板差异表。", "refs": [{"name": "Vivado 安装指南（配套仓库 setup/vivado.md）", "url": "https://github.com/yanhexiong/FPGA_ROUTE/blob/main/setup/vivado.md", "note": "Windows 与 Ubuntu 两类环境的安装步骤、JTAG 驱动、安装验证与常见问题"}], "lab": "s1/05_led_board"} },
         { t: "进阶：写 4×4 脉动阵列做矩阵乘，用 cocotb（Python 写 testbench）验证", board: false, how: {"why": "脉动阵列是 TPU 和大多数 AI 加速器的计算核心。testbench 换成 cocotb，用 Python 写测试，参考答案直接用 NumPy 算。", "steps": ["pip install cocotb numpy（建议用虚拟环境），另外要有 make。", "在纸上手推 3 拍：A 取单位矩阵，看 PE(0,0)、PE(0,1)、PE(1,1) 各在哪一拍拿到哪个数。", "写 pe.v（MAC 加两个传递寄存器）和 systolic4x4.v（用 generate 例化 16 个 PE 并连线）。", "运行 make：先过单位矩阵测试，再过 20 组随机矩阵和连续两次矩阵乘。", "读懂 test_systolic.py 里输入是怎么错开喂进阵列的（skew）。"], "done": "cocotb 显示 TESTS=3 PASS=3；能画出数据在阵列里怎么流动，说清第几拍哪个 PE 在算哪一项。", "lab": "s1/04_systolic_cocotb"} }
       ],
       deliverable: "4×4 脉动阵列 GEMM 的 RTL 和自动比对的 testbench，能对着波形讲清楚数据怎么流动。",
@@ -97,7 +97,7 @@ window.ROUTE = {
         "忽略复位和时钟，仿真能过、上板出错。"
       ],
       questions: [
-        "工具版本（建议）：Vivado、Vitis、PetaLinux 统一用 2023.1。这是 Vitis AI 3.5 + DPU 4.1 官方验证过的组合，两块板的 XCZU5EV、XCZU4EV 都在免费档位内，不用买 license。ALINX 同系列的出厂例程多为 2020.1，旧工程可以在 2023.1 里升级 IP，或者用板卡约束和 PS 预设重建。系统用 Ubuntu 22.04，24.04 不在 2023.1 的支持列表里。2023.1 是项目内冻结的基线，中途不升级；S6 的 DPU 基线做完后，计划有准备地升级一次再做 S7–S9。"
+        "工具版本与使用环境：Vivado、Vitis、PetaLinux 暂定统一使用 2023.1，这是 Vitis AI 3.5 与 DPU 4.1 官方验证过的组合；两块板的 XCZU5EV、XCZU4EV 均在免费版（Vivado ML Standard Edition）支持范围内，无需购买许可证。若 2023.1 在使用中出现无法解决的问题，再整体升级到更新的版本。使用环境可以是 Windows，也可以是 Ubuntu（实体机或 KVM 虚拟机），安装步骤见配套仓库 setup/vivado.md；2023.1 官方支持 Ubuntu 22.04，24.04 不在支持列表中。PetaLinux 只能在 Linux 上运行，使用 Windows 的读者须在 S5 之前准备 Ubuntu 环境。厂家提供的旧版本例程（如 2020.1）可在 2023.1 中升级 IP，或依据板卡约束与 PS 配置重建。"
       ]
     },
     {
@@ -118,7 +118,7 @@ window.ROUTE = {
         "AXI4 搬数据、AXI4-Lite 配寄存器、AXI4-Stream 传数据流；DMA；DDR 带宽。"
       ],
       tasks: [
-        { t: "给两块板各建一个可以反复复用的 Vivado 工程模板：FZ5D 从米尔资料包里的 Vivado 工程或 HDF 导入 PS 配置，AXU4EVB-E 用 ALINX 的。用 2023.1 重建、导出 XSA。同一份 RTL 只换约束和 PS 配置", board: false, how: {"why": "之后每个实验都从模板起步，省掉每次重新配置 PS。两块板各一份，这本身就是第一次系统地对比两套板级配置。", "steps": ["AXU4EVB-E：照 ALINX 教程新建工程，在 Block Design 里放 Zynq UltraScale+ MPSoC IP，应用 ALINX 给的 PS 预设，核对 DDR、时钟、串口和 SD 卡的配置。", "FZ5D：在米尔资料包里找 Vivado 工程或 HDF。有工程就用 2023.1 打开，Report IP Status 后把 IP 全部升级；只有 HDF 的话，它其实是个压缩包，里面的 psu_init 文件记录了 PS 配置，可以对照着在新工程里重新配。", "对着原理图核对 FZ5D 的 DDR 型号、位宽和速率。这一步自己做，不要交给 AI。", "两个工程都用 File → Project → Write Tcl 导出成脚本，以后一条命令就能重建（整理脚本可以交给 AI）。", "生成比特流后 File → Export → Export Hardware，勾选包含比特流，得到 XSA。"], "done": "两份 Tcl 脚本都能在空目录里重建工程；两个 XSA；笔记里记下每块板 PS 配置的要点。"} },
+        { t: "给两块板各建一个可以反复复用的 Vivado 工程模板：FZ5D 从其硬件资料中的 Vivado 工程或 HDF 导入 PS 配置，AXU4EVB-E 使用 ALINX 提供的配置作对照。用 2023.1 重建、导出 XSA。同一份 RTL 只换约束和 PS 配置", board: false, how: {"why": "之后每个实验都从模板起步，省掉每次重新配置 PS。两块板各一份，这本身就是第一次系统地对比两套板级配置。", "steps": ["FZ5D：在 FZ5D 的硬件资料（课程内部提供）中查找 Vivado 工程、HDF 或 XSA。有工程时，用 2023.1 打开，执行 Report IP Status 并将 IP 全部升级；只有 HDF 时，HDF 实为压缩包，其中的 psu_init 文件记录了 PS 配置，可对照该文件在新工程中重新配置。", "对照原理图核对 FZ5D 的 DDR 型号、位宽与速率。此步骤须独立完成，不应交由 AI。", "AXU4EVB-E（对照）：参照 ALINX 教程新建工程，在 Block Design 中放置 Zynq UltraScale+ MPSoC IP，应用 ALINX 提供的 PS 预设，核对 DDR、时钟、串口与 SD 卡的配置。", "两个工程均通过 File → Project → Write Tcl 导出为脚本，此后一条命令即可重建（脚本整理可交由 AI 完成）。", "生成比特流后执行 File → Export → Export Hardware，勾选包含比特流，得到 XSA。"], "done": "两份 Tcl 脚本都能在空目录里重建工程；两个 XSA；笔记里记下每块板 PS 配置的要点。"} },
         { t: "把 S1 的脉动阵列分别综合实现到 XCZU5EV 和 XCZU4EV，读资源利用率和时序报告，看同一个设计在两颗芯片上的差别", board: false, how: {"why": "资源报告和时序报告告诉你一块芯片到底能放多大的加速器。同一个设计放到两颗芯片上，差别一目了然。", "steps": ["新建一个纯 RTL 工程，加入 S1 的 pe.v 和 systolic4x4.v。", "阵列端口太多，超过芯片引脚数，所以用 out-of-context 模式综合：在综合设置里加 -mode out_of_context。", "加一条时钟约束，比如 create_clock -period 3.333 -name clk [get_ports clk]，即目标 300 MHz。", "跑综合和实现，看 Report Utilization（LUT、FF、DSP、BRAM）和 Report Timing Summary（WNS）。", "把目标器件换成另一颗芯片，再跑一遍。"], "done": "一张表：两颗芯片 × LUT、FF、DSP、WNS、可达频率（约等于 1000 ÷（时钟周期 − WNS）MHz）。"} },
         { t: "把阵列逐步加大，记录 DSP 用量和最高频率的变化", frag: true, board: false, how: {"why": "看清资源和频率怎么随阵列规模变化，找到每颗芯片上的瓶颈是 DSP、布线还是时序。", "steps": ["把阵列改成参数化的：S1 写死了 4×4，改成 parameter N。", "N 取 4、8、12、16……逐个做 out-of-context 综合加实现，直到 DSP 用满或者时序崩掉。批量跑的 Tcl 脚本和提取数字的脚本交给 AI。", "两颗芯片各画一张图：横轴 N，纵轴 DSP 用量和可达频率。"], "done": "两张曲线图，加一段解释：每颗芯片最大能放多大的阵列，卡在哪里。"} },
         { t: "在 FZ5D 上用 Block Design 搭 Zynq PS + 自定义 AXI-Lite IP 的系统，上板后用 Vitis 裸机 C 程序读写寄存器", board: true, how: {"why": "PS 上的 CPU 通过 AXI-Lite 读写寄存器来控制加速器，这是后面所有加速器的控制方式。", "steps": ["Tools → Create and Package New IP → Create AXI4 Peripheral，生成一个带 4 个寄存器的 AXI-Lite 模板。向导最后一页勾选 Verify Peripheral IP using AXI4 VIP，下一个任务会用到。", "在模板里加一点自己的逻辑，比如把寄存器 0 和寄存器 1 的和放进寄存器 2。", "在 FZ5D 的模板工程里新建 Block Design：Zynq MPSoC 加上你的 IP，点 Run Connection Automation 自动连线。", "生成比特流，导出 XSA。在 Address Editor 里记下 IP 的基地址。", "在 Vitis 2023.1 里用 XSA 新建 platform，再建一个 Hello World 应用，用 Xil_Out32、Xil_In32 读写寄存器，结果从串口打印出来。"], "done": "串口打印出正确的加法结果。"} },
@@ -129,21 +129,21 @@ window.ROUTE = {
       deliverable: "一份报告：你的阵列在 XCZU5EV 和 XCZU4EV 上各能放多大、跑多快，瓶颈是 DSP、BRAM 还是时序；外加两块板的 2023.1 硬件平台（XSA）、一个在两块板上都跑通的 PS 读写自定义 IP 的裸机工程，和一张两块板的 PS 配置差异表。",
       aiSave: 10,
       harness: {
-        self: ["读懂资源和时序报告，弄懂 AXI 握手", "对照 ALINX 和米尔的原理图亲自核对引脚约束、电平标准和 PS 时钟、DDR 配置"],
+        self: ["读懂资源和时序报告，弄懂 AXI 握手", "对照两块板的硬件资料（先 FZ5D，后 AXU4EVB-E），亲自核对引脚约束、电平标准、PS 时钟与 DDR 配置"],
         ai: ["把工程改成 Vivado Tcl 脚本（非工程模式），一条命令重建", "批量综合不同阵列规模，从报告里自动提取 DSP、频率，生成表格", "裸机读写寄存器的 C 程序样板"],
         skip: ["在 GUI 里反复手点重建工程", "手抄报告数字到表格"]
       },
       resources: [
-        { name: "ALINX 给 AXU4EVB-E 配套的例程和教程", zh: true, note: "优先用这一套：引脚约束、PS 配置、例程都对应你的板子。B 站也有 ALINX 的 MPSoC 视频教程" },
-        { name: "米尔 FZ5 资料包（随板光盘或向米尔索取）", zh: true, note: "移植到 FZ5D 时要用：原理图、Vivado 工程或 HDF 里的 PS 侧 DDR 和引脚配置。没有它，PS 配置只能从原理图倒推" },
+        { name: "EdgeBoard FZ5D 硬件资料（课程内部提供，不公开）", zh: true, note: "主力板的原理图与硬件手册，以及其中可能包含的 Vivado 工程、HDF 或 XSA；PS 侧 DDR 与引脚配置以此为准" },
+        { name: "ALINX 为 AXU4EVB-E 提供的例程与教程", zh: true, note: "对照板的资料，做 AXU4EVB-E 对照实验时使用" },
         { name: "AMD UG1037 AXI Reference Guide", note: "AXI 协议的实用说明" },
         { name: "AMD UG1085 Zynq UltraScale+ 技术参考手册", note: "查阅用，不必通读" },
         { name: "The Zynq Book", note: "免费电子书，基于 Zynq-7000，概念通用" }
       ],
       pitfalls: [
-        "随手装最新版。Vivado、Vitis、PetaLinux、ALINX 的 BSP 和以后的 DPU 版本必须匹配，先定版本再装。",
+        "随意安装最新版本。Vivado、Vitis、PetaLinux、板卡 BSP 与后续的 DPU 版本必须相互匹配，应先确定版本再安装。",
         "时序违例的比特流上板后行为不可预测，别抱侥幸。",
-        "FZ5D 直接拿 2019.1 的米尔工程在 2023.1 里升级 IP 后就用。打开后先核对 PS 的 DDR 型号、位宽和时钟参数和原理图一致，再生成比特流。"
+        "将 FZ5D 资料中的旧版本工程（如 2019.1）在 2023.1 中升级 IP 后直接使用，而不核对配置。打开工程后，应先核对 PS 的 DDR 型号、位宽与时钟参数是否与原理图一致，再生成比特流。"
       ],
       questions: [
         "安装环境：KVM 虚拟机加串流的 GNOME 桌面可以用，但虚拟机建议给 16 GB 以上内存、300 GB 左右磁盘。板子插在哪台机器上？JTAG 可以 USB 直通进虚拟机，也可以在接板子的机器上跑 hw_server，虚拟机里的 Vivado 通过网络远程连接。"
@@ -281,7 +281,7 @@ window.ROUTE = {
         skip: ["为了“学全”把几种镜像构建工具都走一遍", "从零写 Linux 内核驱动（UIO / XRT 够用）", "没有明确需要时移植 PYNQ"]
       },
       resources: [
-        { name: "ALINX 给 AXU4EVB-E 配套的 Linux 教程", zh: true, note: "PetaLinux 的操作步骤写得细，换到 FZ5D 上照着做，只是把 BSP 换成自己导出的 XSA" },
+        { name: "ALINX 为 AXU4EVB-E 提供的 Linux 教程", zh: true, note: "对照板的资料，做 AXU4EVB-E 对照实验时使用；其中 PetaLinux 的通用操作步骤也可供 FZ5D 参考，区别在于 FZ5D 使用自行导出的 XSA" },
         { name: "Bootlin 嵌入式 Linux 培训资料", url: "https://bootlin.com/training/embedded-linux/", note: "免费公开的讲义，启动链、设备树、交叉编译讲得清楚，不绑定任何构建工具" },
         { name: "Yocto Project 文档", url: "https://docs.yoctoproject.org", note: "走 Yocto 或以后换 EDF 时看" },
         { name: "Xilinx/meta-xilinx", url: "https://github.com/Xilinx/meta-xilinx", note: "AMD 器件的 Yocto 层，PetaLinux 和 EDF 底下都是它" },
@@ -292,11 +292,11 @@ window.ROUTE = {
       pitfalls: [
         "在镜像构建上花掉大部分时间。目标是能 SSH 登录、能加载自己的比特流，镜像能用就停，别陷进 Yocto 配置里。",
         "没有刷 cache，读到旧数据。",
-        "比特流、设备树和驱动版本不匹配。最典型的是用米尔的 2019.1 镜像去加载 2023.1 生成的比特流和驱动。",
+        "比特流、设备树和驱动版本不匹配。最典型的是用 FZ5D 资料中的旧版本镜像（如 2019.1）去加载 2023.1 生成的比特流和驱动。",
         "PetaLinux / Yocto 编译要 100 GB 以上磁盘、16 GB 以上内存，第一次还要下载大量软件包。放到服务器上跑，别占台式机。"
       ],
       questions: [
-        "FZ5D 从 TF 卡还是 eMMC 启动？启动模式拨码开关在哪？（查米尔的硬件手册）",
+        "FZ5D 从 TF 卡还是 eMMC 启动？启动模式拨码开关在哪？（查 FZ5D 的硬件手册）",
         "板子放在哪里、能否远程访问（串口、网口）？实验室有没有现成的镜像可以直接用？"
       ]
     },
@@ -329,7 +329,7 @@ window.ROUTE = {
       aiSave: 30,
       harness: {
         self: ["自研加速器的架构和关键模块", "逐层误差定位时的判断：问题出在量化、打包还是硬件"],
-        ai: ["PTQ 脚本、权重导出打包、逐层 golden 比对框架", "DPU 集成的 Tcl 和 PetaLinux 配置，照 ALINX 教程和 PG338 走（版本你来定）", "实验结果表格和图的自动生成"],
+        ai: ["PTQ 脚本、权重导出打包、逐层 golden 比对框架", "DPU 集成的 Tcl 和 PetaLinux 配置，依据 PG338 与 KV260 的 DPU 参考设计完成（版本由你决定）", "实验结果表格和图的自动生成"],
         skip: ["自己研究量化算法（用标准 PTQ，等同学的成果）", "手写 ONNX 解析器（用现成库）"]
       },
       resources: [
@@ -600,7 +600,7 @@ window.ROUTE = {
     ],
     redlines: [
       "S1–S4 的核心 RTL 和 HLS 第一版自己写，写完再让 AI review，而不是它写你读。这部分能力就是你要学的东西。",
-      "引脚约束、电平标准、PS 时钟和 DDR 配置，对着板卡原理图（ALINX、米尔）亲自核对。写错了轻则不工作，重则可能损坏板上器件。",
+      "引脚约束、电平标准、PS 时钟和 DDR 配置，对照板卡的硬件资料（FZ5D 与 AXU4EVB-E 各自的原理图）亲自核对。写错了轻则不工作，重则可能损坏板上器件。",
       "AI 给出的工具选项、API 名称、论文数字，用之前查原文或实际跑一遍。Vivado、Vitis AI、XRT 各版本差异大，它常把不同版本的用法混在一起。",
       "AI 修好的 bug，要让它讲清根因，你能自己复述了再合并。时序问题、cache 一致性问题尤其如此。",
       "报告和论文里的每个数字，都要能追溯到一次实际运行。"
@@ -694,11 +694,11 @@ window.ROUTE = {
       "DSP 多七成，DPU 能放下单核 B4096（AXU4EVB-E 是 B1600–B2304），同一个卷积网络的吞吐大约高 1.7–2 倍。",
       "内存 8 GB，带宽和 AXU4EVB-E 相同。LLM 解码速度只看带宽，同一个模型的 tok/s 基本一样；多出来的 4 GB 让 7B INT4 模型能和 Linux、KV Cache 一起放进内存，不必裸机运行。",
       "没有 PL 侧独立 DDR。PL 侧 DDR 是直接接在 FPGA 引脚上、给加速器独占的第二块内存，AXU4EVB-E 有一块 1 GB 的，但只有 4.3 GB/s，不能用来提速。S9 里“KV Cache 放 PL DDR”这个选做实验只能回到 AXU4EVB-E 上做，主线不受影响。",
-      "资料比 ALINX 少：出厂系统是百度的一套，和这条路线的 Vivado 流程无关，也没有中文的 Vivado 入门教程。要用自己的加速器，得用 Vivado 2023.1 新建硬件平台。先在米尔资料包里找 Vivado 工程、HDF 或 XSA，里面有 PS 侧 DDR 和引脚配置；有它就能导入新版本升级，没有的话 PS 配置要自己从原理图推，工作量大很多。所以 S1 的第一个上板实验先在 AXU4EVB-E 上照 ALINX 教程跑通，再移植过来。",
+      "硬件资料不公开发布，由课程内部提供。出厂系统是百度的一套，与本路线的 Vivado 流程无关，也没有中文的 Vivado 入门教程。要使用自行设计的加速器，须用 Vivado 2023.1 新建硬件平台：先在 FZ5D 的硬件资料中查找 Vivado 工程、HDF 或 XSA，其中包含 PS 侧 DDR 与引脚配置；有这些文件即可导入新版本升级，否则 PS 配置须依据原理图自行推导，工作量将大幅增加。",
       "两块板芯片同代、内存带宽相同，只有 DSP 数量和内存容量不同。正好把“算力”和“带宽”两个变量分开，适合做 roofline 验证和设计空间探索的实验。"
     ],
     split: [
-      ["S1 上板入门", "LED 和按键实验，走通综合到 JTAG 下载", "第一个实验先在 AXU4EVB-E 上照教程跑通再移植。体会：同一份 RTL 换板只改约束文件，引脚、电平标准、时钟源都要对着原理图重查"],
+      ["S1 上板入门", "PS 最小系统与 hello_world，PS 驱动 RUN 灯，PL 流水灯经 VIO 观察", "在 AXU4EVB-E 上复用同一份 RTL，直接驱动板载 LED 与按键。体会：RTL 保持不变，PS 配置（DDR、串口所用的 MIO）、引脚与约束随开发板而变；FZ5D 的 PL 没有板载 LED 与按键，AXU4EVB-E 有"],
       ["S2 FPGA 与 AXI", "建工程模板，Zynq PS + 自定义 AXI-Lite IP", "同一个工程在两块板上各建一份。体会：PS 配置（DDR 型号和位宽、参考时钟、MIO 外设）是板级的，换板最容易出错的就是它；同一个阵列在 1248 和 728 DSP 上能放多大"],
       ["S3 HLS", "GEMM 上板实测", "同一份 HLS 代码换器件综合。体会：pragma 的效果、能达到的 II 和资源占用会随器件变化"],
       ["S4 加速器设计", "按 XCZU5EV 做设计文档", "在同一张 Roofline 上画 XCZU4EV。体会：带宽顶相同、算力顶不同，哪些层的瓶颈会因此改变"],
@@ -708,7 +708,7 @@ window.ROUTE = {
       ["S8 Transformer", "比 DeiT-Tiny 大一档的模型", "可选：同一模型缩小阵列放进去，看资源不够时性能怎么掉"],
       ["S9 大语言模型", "0.5B–1.5B 主线，7B INT4 挑战（8 GB 内存可在 Linux 下跑）", "同一个模型测 tok/s，再试“KV Cache 放 PL DDR”。体会：带宽相同所以 tok/s 基本一样，亲手验证解码只看带宽；多一块独占内存能带来什么"]
     ],
-    fallback: "如果 FZ5D 一开始就卡住（最可能的原因是找不到米尔的 Vivado 工程或 HDF，PS 侧 DDR 配置推不出来），先用 AXU4EVB-E 继续往下走，同时向米尔要资料，拿到后再换回来。两块板芯片同代、工具相同，换来换去不损失已经做的工作。"
+    fallback: "如果 FZ5D 一开始就卡住（最可能的原因是 FZ5D 资料中缺少 Vivado 工程或 HDF，PS 侧 DDR 配置推不出来），先用 AXU4EVB-E 继续往下走，同时补充 FZ5D 的资料，拿到后再换回来。两块板芯片同代、工具相同，换来换去不损失已经做的工作。"
   },
 
   // 以后实验室两块板都不够用时可以考虑的板卡
