@@ -131,7 +131,33 @@ Windows 用户在 **Vivado 2023.1 Tcl Shell** 中先以 `cd` 进入 `setup` 目�
 
 ### 3. 确认 JTAG 驱动
 
-将 JTAG 下载器连接到计算机后，在 Vivado 中选择 **Open Hardware Manager → Open Target → Auto Connect**。开发板上电时，左侧应列出板上的器件。此步骤可留待 S1-05 上板时进行。
+此步骤**不需要 Vivado 工程**，也不需要开发板。
+
+**3.1 确认系统识别了下载器。**
+
+- Windows：按 Win+X，选择「设备管理器」。将下载器拔下再插上，随之消失、出现的那一项就是下载器。它可能位于「通用串行总线设备」「通用串行总线控制器」「其他设备」，或以 Digilent、Xilinx 命名的分类下；图标带黄色感叹号表示驱动没有装好。在设备管理器中找不到时，可打开 PowerShell，插拔前后各执行一次下面的命令，对比两次输出的差别：
+
+  ```powershell
+  Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like 'USB\VID*' } | Format-Table Status, FriendlyName, InstanceId
+  ```
+
+- Ubuntu：插拔前后各执行一次 `lsusb`，对比输出。
+- 虚拟机：须先将该 USB 设备直通给虚拟机，否则虚拟机里看不到它。
+
+**3.2 确认 Vivado 能看到下载器。** 不要新建工程，任选下面一种方式：
+
+- 图形界面：启动 Vivado，在欢迎页（没有打开任何工程时的 *Quick Start* 页面）的 *Tasks* 一栏点击 **Open Hardware Manager**，再点击顶部绿色提示条中的 **Open target → Auto Connect**；
+- 命令行：启动 **Vivado 2023.1 Tcl Shell**（Windows 在开始菜单中，Ubuntu 执行 `vivado -mode tcl`），依次执行：
+
+  ```tcl
+  open_hw_manager
+  connect_hw_server
+  get_hw_targets
+  ```
+
+  `get_hw_targets` 列出了一个以 `xilinx_tcf` 开头的条目，就说明驱动与 `hw_server` 都正常。接上开发板并上电后，继续执行 `open_hw_target` 与 `get_hw_devices`，应列出板上的器件。
+
+下载器接上、开发板未接时，能看到 target 但没有器件，这是正常的。开发板的部分可留待 S1-05 上板时进行。
 
 ## 常见问题
 
