@@ -12,6 +12,99 @@
 
 本实验以 EdgeBoard FZ5D 为必备开发板，第 1 至 4 步只需要这一块板。FZ5D 的 PL 侧**没有**用户 LED 与用户按键，无法按常见的“PL 驱动 LED”方式完成实验，因此第 3、4 步分别以 PS 侧的 RUN 灯与 JTAG 调试核（VIO）替代。这一差异本身是本实验要体会的内容之一：不同开发板可供使用的外设不同，实验方案须依据硬件资料确定。
 
+## 背景知识
+
+### Zynq UltraScale+ MPSoC 的架构：PS 与 PL
+
+Zynq UltraScale+ MPSoC 并非单纯的 FPGA，而是在同一颗芯片内集成了两大部分：
+
+- **PS（Processing System，处理系统）**：硬核处理器子系统，包含 4 核 ARM Cortex-A53 应用处理器、2 核 Cortex-R5 实时处理器，以及硬化的内存控制器（DDR4）与外设控制器（UART、GPIO、QSPI、SD/eMMC、USB、以太网等）。即使 PL 内部没有任何电路，PS 仍可作为一颗完整的嵌入式处理器独立运行 C 程序。
+- **PL（Programmable Logic，可编程逻辑）**：传统意义上的 FPGA 可编程逻辑阵列，包含查找表（LUT）、触发器（FF）、DSP48 乘加单元与片上存储（BRAM、URAM）等资源。`led_flow` 等 Verilog 模块综合后即配置在 PL 中。
+
+二者在引脚资源与芯片内部互连上各自有明确的分工：
+
+| 比较项 | PS | PL |
+|---|---|---|
+| 运行内容 | 裸机 C 程序或嵌入式 Linux（如 Vitis 工程） | 硬件描述语言（Verilog / HLS）综合生成的数字电路 |
+| 外部引脚 | 固定连接到 **MIO（Multiplexed I/O，复用 I/O）**，引脚位置由芯片封装决定，不写 `.xdc` | 通用 I/O 引脚（如扩展接口 J15），须由 `.xdc` 约束文件指定引脚号与电平标准 |
+| 跨界连接 | 向 PL 提供时钟（如 `pl_clk0`）、复位信号，以及高性能 **AXI** 总线（S2 及以后使用） | 也可借 **EMIO** 将 PS 外设信号引出至 PL 引脚 |
+
+### Vivado 工程、XSA、约束文件与 VIO
+
+1. **为什么 PS 需要 Vivado 配置与 XSA。** PS 虽是硬核，但芯片上电复位后并不了解开发板外围电路的硬件参数：DDR4 的颗粒型号与容量、输入参考时钟频率、UART0 分配在哪些 MIO 引脚上。这些板级参数须在 Vivado 的 Block Design 中配置，并随工程导出为 **XSA（Xilinx Support Archive，硬件支持归档文件）**。XSA 包含两类内容：
+   - **PS 硬件配置信息**：供 Vitis 据此生成平台初始化代码（`psu_init` 与 FSBL，在运行用户 `main()` 之前完成时钟、MIO 与 DDR4 训练）以及头文件 `xparameters.h`（记录外设基地址与设备编号宏）；
+   - **PL 比特流（Bitstream，`.bit`）**：PL 逻辑的配置数据。
+2. **从 RTL 到比特流的主要步骤。** 在 Vivado 中点击生成比特流，工具会依次完成三个阶段（加上此前的仿真与随后的下载，共五个步骤）：
+   - **综合（Synthesis）**：将 Verilog 描述翻译为逻辑门与器件原语（LUT、FF 等）构成的网表；
+   - **实现（Implementation）**：包括**布局（Place）**与**布线（Route）**，将网表中的每个单元分配到芯片具体的物理位置并连通可编程互连线，同时检查全部路径是否满足时钟周期约束（即报告中的最差负裕量 **WNS ≥ 0**）；
+   - **生成比特流（Generate Bitstream）**：将布局布线结果编码为二进制配置数据（`.bit`），下载到 PL 配置存储器后电路即开始工作。
+3. **约束文件 `.xdc` 的作用，以及本实验 FZ5D 为何不需要 `.xdc`。** 当设计中存在连接到芯片外部物理引脚的顶层端口时，必须在 `.xdc` 约束文件中指定每根信号的引脚编号（`PACKAGE_PIN`）与电平标准（`IOSTANDARD`），否则生成比特流时会因引脚未分配而报错（`UCIO-1`、`NSTD-1`）。在 FZ5D 的本实验中，`led_flow` 的全部端口仅在芯片内部连接到 PS 的 `pl_clk0` 与 VIO 核，没有任何信号引出到外部 PL 引脚；而 `pl_clk0` 的时钟周期约束由 PS IP 自动生成，因此无需手动编写 `.xdc`。选做的 AXU4EVB-E 将 `led[3:0]` 与 `pause` 引出到板载物理引脚，则必须编写 `.xdc`。
+4. **VIO（Virtual Input/Output）调试核的原理。** VIO 是在 PL 中开辟的一组可经 JTAG 读写的虚拟寄存器：输入探针（`probe_in`）按时钟采样 PL 内部信号并传回计算机上的 Hardware Manager 显示，输出探针（`probe_out`）则接收计算机写入的值并直接驱动 PL 信号。导出生成的 `.ltx` 探针描述文件记录了各探针的名称、位宽与地址，使 Hardware Manager 能将二进制位映射为指示灯与开关。**VIO 核与被测模块共用 `pl_clk0`；若 PS 尚未初始化，`pl_clk0` 无时钟输出，Hardware Manager 将无法检测到 `hw_vio_1`。**
+
+### 流水灯电路的设计原理（第一步 `led_flow.v`）
+
+**1. 独热码（One-Hot）与循环左移。** 独热码指 N 位二进制数在任意时刻有且仅有一位为 1，其余各位为 0。4 位独热码共有四种合法取值：`4'b0001 → 4'b0010 → 4'b0100 → 4'b1000 → 4'b0001`。
+
+Verilog 的逻辑左移运算符 `<< 1` 会在最低位补 0 并丢弃最高位（`4'b1000 << 1` 得到 `4'b0000`，所有灯熄灭之后便无法恢复）。循环左移须使用位拼接运算符 `{...}` 将最高位 `led[3]` 移回最低位：
+
+```verilog
+led <= {led[2:0], led[3]};
+```
+
+可代入检验：`led = 4'b0001` 时，`led[2:0] = 3'b001`、`led[3] = 1'b0`，拼接结果为 `4'b0010`；`led = 4'b1000` 时，拼接结果为 `4'b0001`。
+
+**2. 计数器分频与单周期移位使能。** 系统时钟 `clk` 为 100 MHz（周期 10 ns），人眼无法分辨每秒数千万次的变化，须通过分频使 `led` 每隔 `DIV` 个时钟周期才移动一次。
+
+在 FPGA 设计中，**不应当**用计数器翻转产生一个低频信号 `slow_clk`，再将其写入 `always @(posedge slow_clk)`。由普通逻辑产生的时钟信号不经过芯片专用的全局时钟缓冲器（BUFG），布线延迟大且时钟偏斜（clock skew）不可控，会破坏工具的静态时序分析。工程上的标准做法是**全模块共用同一个系统时钟 `clk`**，增设一个计数器 `cnt` 从 `0` 循环计数至 `DIV - 1`：
+
+- 计数器须能表示 `0` 至 `DIV - 1` 共 `DIV` 个数值，所需位宽为 `W = $clog2(DIV)`（例如 `DIV = 4` 时 `W = 2`，计数器为 `reg [1:0] cnt`，范围 `0..3`；`DIV = 25_000_000` 时 `W = 25`；`DIV = 100_000_000` 时 `W = 27`）。
+- 当 `cnt == DIV - 1` 时，下一个上升沿使 `cnt` 归零，同时触发 `led` 移位（即产生单周期的移位条件）；其余上升沿 `cnt` 加 1，`led` 保持不变。
+
+注意比较条件是 `cnt == DIV - 1` 而非 `cnt == DIV`：从 0 数到 `DIV - 1` 恰好经过 `DIV` 个时钟周期。若误写为 `cnt == DIV`，周期数将变成 `DIV + 1`。
+
+**3. 异步输入、亚稳态（Metastability）与两级寄存器同步。** 触发器正常采样要求输入信号在时钟上升沿前后的建立时间（setup time）与保持时间（hold time）窗口内保持稳定。然而机械按键或 VIO 输出等外部信号与 `clk` 没有固定相位关系（称为异步信号），可能在时钟上升沿恰好发生跳变，违背建立或保持时间。此时第一级触发器的输出可能进入既非高电平也非低电平的中间状态（或产生振荡），称为**亚稳态（metastability）**。若直接将该不稳定的信号送往后续多个组合逻辑分支，不同路径可能把它判定为不同的逻辑值，导致状态错乱。
+
+工程上的标准处理方法为**两级触发器同步器（two-flip-flop synchronizer）**：
+
+```verilog
+reg pause_sync1, pause_sync2;
+always @(posedge clk) begin
+    pause_sync1 <= pause;
+    pause_sync2 <= pause_sync1;
+end
+```
+
+第一级触发器 `pause_sync1` 即使发生亚稳态，也会在接下来的一个完整时钟周期内以极高概率恢复并稳定到 0 或 1；随后第二个时钟上升沿再由 `pause_sync2` 安全采样，提供给控制逻辑使用。代价是信号被延迟了两个时钟周期，且后续组合逻辑**必须使用 `pause_sync2`**，不得直接引用 `pause` 或 `pause_sync1`。
+
+### PS 侧 GPIO 与 Vitis 裸机编程基础（第三步 `ps_led.c`）
+
+**1. MIO 分组与引脚编号。** Zynq UltraScale+ MPSoC 的 PS 共有 78 个 MIO 引脚（MIO0–MIO77），按编号分为三个 Bank：
+
+- Bank 0：MIO0–MIO25（Vivado 中对应 **GPIO 0 MIO**）；
+- Bank 1：MIO26–MIO51（对应 **GPIO 1 MIO**）；
+- Bank 2：MIO52–MIO77（对应 **GPIO 2 MIO**）。
+
+FZ5D 的 RUN 指示灯 D46 接在 **MIO42**，属于 Bank 1，这正是第二步在 Vivado 中勾选 *GPIO 0 MIO* 与 *GPIO 1 MIO* 的原因。在 Xilinx 的 `xgpiops` 驱动中，MIO 引脚的软件引脚号直接等于 MIO 编号，因此 `ps_led.c` 定义 `#define RUN_LED_PIN 42`（只有引向 PL 侧的 EMIO 引脚才从 78 起算）。
+
+**2. 为什么 GPIO 输出需要“设方向”和“使能输出”两步。** PS 的每个 GPIO 引脚内部同时包含输入缓冲器、输出数据锁存器与三态输出驱动门。芯片上电复位后，所有引脚默认处于高阻输入态，以防止在软件配置之前与外部电路发生电平冲突。因此将其配置为输出时，须依次完成两步：先将方向（Direction）设为输出（`1` 为输出，`0` 为输入），再开启输出使能（Output Enable，`1` 允许驱动外部引脚，`0` 保持高阻三态），此后写入的数据电平才会驱动三极管 Q2 与 RUN 灯。
+
+**3. Vitis 裸机程序（Standalone）与 BSP 的结构。** 裸机程序不运行操作系统，硬件初始化完成后直接进入 C 语言的 `main()` 函数。Vitis 根据导入的 XSA 自动生成 **BSP（Board Support Package，板级支持包）**，其中与 `ps_led.c` 直接相关的头文件包括：
+
+- `xparameters.h`：由 Vivado 导出的硬件配置自动生成，定义各外设的设备编号与基地址宏，例如 PS GPIO 控制器的设备号 `XPAR_XGPIOPS_0_DEVICE_ID`；
+- `xgpiops.h`：PS GPIO 驱动库头文件，提供 `XGpioPs` 结构体（驱动程序实例）、`XGpioPs_Config` 配置结构体以及以下常用 API；
+- `xil_printf.h` 与 `sleep.h`：`xil_printf` 是 Xilinx 提供的轻量级串口格式化输出函数（占用内存远小于标准 `printf`，不支持 `%f` 浮点格式）；`usleep(us)` 提供微秒级阻塞延时，本实验取 `HALF_PERIOD_US = 500000`（0.5 s），使状态每 0.5 s 翻转一次，形成 1 Hz 闪烁。
+- 类型别名：`u32` 为 32 位无符号整数（对应标准 C 的 `uint32_t`），`s32` 为 32 位有符号整数（`int32_t`），均由 BSP 的 `xil_types.h` 定义。
+
+**4. `xgpiops` 驱动的调用流程。** `ps_led.c` 按如下顺序调用五个库函数（详细原型亦可在 Vitis 的 `xgpiops.h` 与 `xgpiops_polled_example.c` 中查阅）：
+
+| 步骤 | 函数原型 | 作用与返回值检查 |
+|---|---|---|
+| 1 | `XGpioPs_Config *XGpioPs_LookupConfig(u16 DeviceId)` | 根据 `XPAR_XGPIOPS_0_DEVICE_ID` 查找硬件配置表。若返回 `NULL`，说明 XSA 中未启用 GPIO 或设备号错误 |
+| 2 | `s32 XGpioPs_CfgInitialize(XGpioPs *InstancePtr, XGpioPs_Config *ConfigPtr, u32 EffectiveAddr)` | 用配置指针 `cfg` 与基地址 `cfg->BaseAddr` 初始化驱动实例 `&gpio`。成功时返回 `XST_SUCCESS` |
+| 3 | `void XGpioPs_SetDirectionPin(const XGpioPs *InstancePtr, u32 Pin, u32 Direction)` | 设置单个引脚方向：`Pin` 为 `RUN_LED_PIN`，`Direction` 取 `1` 表示输出 |
+| 4 | `void XGpioPs_SetOutputEnablePin(const XGpioPs *InstancePtr, u32 Pin, u32 OpEnable)` | 使能单个引脚输出：`OpEnable` 取 `1` |
+| 5 | `void XGpioPs_WritePin(const XGpioPs *InstancePtr, u32 Pin, u32 Data)` | 向引脚写入输出电平 `Data`（`0` 或 `1`） |
+
 ## 准备工作
 
 1. 按 [`setup/vivado.md`](../../setup/vivado.md) 安装 Vivado/Vitis 2023.1，并运行其中的检查脚本，确认输出 `CHECK PASSED`。
@@ -81,12 +174,12 @@ MYIR 快速使用指南的连接图使用 6 根带标签的单根引线，标签
 
 实现模块 `led_flow`：四个 LED 构成一个独热码，每隔固定的时钟周期数向左循环移动一位，`pause` 有效时停止移动。
 
-| 端口 | 方向 | 位宽 | 说明 |
-|---|---|---|---|
-| `clk` | 输入 | 1 | 时钟，上升沿有效 |
-| `rst` | 输入 | 1 | 同步复位，高电平有效 |
-| `pause` | 输入 | 1 | 暂停，高电平有效。该信号与 `clk` 异步（实际使用时来自按键），须先经两级寄存器同步，再用于控制 |
-| `led` | 输出 | 4 | 寄存器输出，任一时刻只有一位为 1（独热码） |
+| 端口 | 方向 | 位宽 | 类型 | 说明 |
+|---|---|---|---|---|
+| `clk` | 输入 | 1 | — | 时钟，上升沿有效 |
+| `rst` | 输入 | 1 | — | 同步复位，高电平有效 |
+| `pause` | 输入 | 1 | — | 暂停，高电平有效。该信号与 `clk` 异步（实际使用时来自按键或 VIO），须先经两级寄存器同步，再用于控制 |
+| `led` | 输出 | 4 | 无符号，`reg` | 寄存器输出，任一时刻只有一位为 1（独热码） |
 
 | 参数 | 默认值 | 说明 |
 |---|---|---|
@@ -94,20 +187,47 @@ MYIR 快速使用指南的连接图使用 6 根带标签的单根引线，标签
 
 **行为规定。**
 
-1. **复位。** 在 `rst` 为 1 的时钟上升沿，`led` 置为 `4'b0001`，计数器清零。同步寄存器是否随 `rst` 清零不作要求。
-2. **计数与移位时刻。** 复位撤销后，计数器从 0 开始循环计数，周期为 `DIV` 个时钟周期。复位撤销后的第 `DIV`、`2·DIV`、`3·DIV`、… 个上升沿为移位时刻。
-3. **移位。** 在移位时刻，若同步后的 `pause` 为 0，则 `led` 循环左移一位（`0001 → 0010 → 0100 → 1000 → 0001`）；若为 1，则 `led` 保持不变。其余时钟上升沿 `led` 不变。
-4. **暂停不影响计数。** `pause` 有效期间，计数器照常循环计数，`pause` 只决定移位时刻是否移位。因此 `pause` 撤销后，下一次移位出现在下一个移位时刻，而不是撤销之后再等待 `DIV` 个周期。
-5. **同步延迟。** 两级同步使 `pause` 的变化滞后两个时钟周期。`pause` 的变化须至少领先移位时刻 3 个周期，才能对该次移位生效。
+1. **复位。** `rst` 为同步复位、高电平有效，具有最高优先级。在 `rst = 1` 的时钟上升沿，`led` 置为 `4'b0001`，分频计数器 `cnt` 清零。同步寄存器 `pause_sync1`、`pause_sync2` 是否随 `rst` 清零不作要求（若一并复位为 `1'b0`，可避免仿真初期出现不确定态 `x`）。
+2. **计数与移位时刻。** 复位撤销后，计数器 `cnt` 从 0 开始循环计数，周期为 `DIV` 个时钟周期：每个上升沿处，若 `cnt == DIV - 1`，则下一个上升沿后 `cnt` 回到 0；否则 `cnt` 加 1。复位撤销后的第 `DIV`、`2·DIV`、`3·DIV`、… 个上升沿（即采样到 `cnt == DIV - 1` 的上升沿）为移位时刻。
+3. **移位。** 在移位时刻，若同步后的信号 `pause_sync2` 为 0，则 `led` 循环左移一位（`0001 → 0010 → 0100 → 1000 → 0001`）；若 `pause_sync2` 为 1，则 `led` 保持不变。其余时钟上升沿 `led` 保持不变。
+4. **暂停不影响计数。** `pause` 有效期间，计数器照常循环计数，`pause_sync2` 只决定移位时刻是否移位。因此 `pause` 撤销后，下一次移位出现在下一个移位时刻，而不是撤销之后再等待 `DIV` 个周期。
+5. **同步延迟。** 两级同步器使 `pause` 的变化滞后两个时钟周期：输入改变后的第 1 个上升沿更新 `pause_sync1`，第 2 个上升沿更新 `pause_sync2`，第 3 个上升沿控制逻辑方能采样到更新后的 `pause_sync2`。因此 `pause` 的变化须至少领先目标移位时刻 3 个上升沿，才能对该次移位生效。
 
-**示例时序（`DIV = 4`，`pause` 始终为 0）。** 表中的“上升沿序号”从复位撤销后的第一个上升沿记为 1，`led` 为该上升沿之后的取值：
+**示例时序（`DIV = 4`，`pause` 始终为 0）。** 表中的“上升沿序号”将 `rst = 0` 之后的第一个上升沿记为 1；`cnt` 与 `led` 均列出该上升沿**之后**（即更新后）的取值：
 
-| 上升沿序号 | 复位时 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+| 上升沿序号 | 复位时（0） | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 是否为移位时刻 | | 否 | 否 | 否 | **是** | 否 | 否 | 否 | **是** | 否 |
-| `led` | `0001` | `0001` | `0001` | `0001` | `0010` | `0010` | `0010` | `0010` | `0100` | `0100` |
+| 上升沿前是否满足 `cnt == DIV−1` | — | 否（`cnt=0`） | 否（`cnt=1`） | 否（`cnt=2`） | **是（`cnt=3`）** | 否（`cnt=0`） | 否（`cnt=1`） | 否（`cnt=2`） | **是（`cnt=3`）** | 否（`cnt=0`） |
+| 上升沿后的 `cnt` | `0` | `1` | `2` | `3` | `0` | `1` | `2` | `3` | `0` | `1` |
+| 上升沿后的 `led` | `0001` | `0001` | `0001` | `0001` | **`0010`** | `0010` | `0010` | `0010` | **`0100`** | `0100` |
 
-**提示。** 计数器位宽可用 `$clog2(DIV)` 确定；`led` 的左移可写作 `{led[2:0], led[3]}`。
+### 代码框架
+
+`led_flow.v` 中已给出模块与端口声明，推荐按如下结构完成（时序逻辑均写在 `always @(posedge clk)` 块中，一律使用非阻塞赋值 `<=`）：
+
+```verilog
+    localparam CNT_W = $clog2(DIV);
+
+    reg [CNT_W-1:0] cnt;
+    reg             pause_sync1;
+    reg             pause_sync2;
+
+    // 1. 两级寄存器同步异步输入 pause
+    always @(posedge clk) begin
+        // TODO：将 pause 依次打入 pause_sync1、pause_sync2
+    end
+
+    // 2. 计数器分频与流水灯移位
+    always @(posedge clk) begin
+        if (rst) begin
+            // TODO：复位 cnt 与 led
+        end else if (cnt == DIV - 1) begin
+            // TODO：计数器归零；若 !pause_sync2，led 循环左移 {led[2:0], led[3]}
+        end else begin
+            // TODO：计数器加 1
+        end
+    end
+```
 
 ### 运行与判题
 
@@ -222,7 +342,10 @@ Successfully ran Hello World application
 目标：让 RUN 灯（D46，PS 的 MIO42）以 1 Hz 闪烁，并每 0.5 s 通过串口输出一行计数。
 
 1. 以 `ps_led.c` 作为框架：将 `hello_world` 工程中 `helloworld.c` 的内容替换为 `ps_led.c` 的内容。
-2. 在 Vitis 中展开 Platform 工程，依次打开 BSP 与 `gpiops` 驱动，利用 *Import Examples* 中的 `xgpiops_polled_example` 了解调用顺序，完成 `ps_led.c` 中三处 `TODO`。
+2. 先阅读「背景知识」中「PS 侧 GPIO 与 Vitis 裸机编程基础」一节，再在 Vitis 中展开 Platform 工程，依次打开 BSP 与 `gpiops` 驱动，利用 *Import Examples* 中的 `xgpiops_polled_example` 对照实际调用顺序与错误检查写法，完成 `ps_led.c` 中三处 `TODO`：
+   - **`TODO 1`（查找配置并初始化）**：调用 `XGpioPs_LookupConfig(XPAR_XGPIOPS_0_DEVICE_ID)` 获取 `cfg`，检查是否为 `NULL`；随后调用 `XGpioPs_CfgInitialize(&gpio, cfg, cfg->BaseAddr)`，检查返回值是否为 `XST_SUCCESS`。初始化失败时可 `return XST_FAILURE;`。
+   - **`TODO 2`（配置方向与输出使能）**：依次调用 `XGpioPs_SetDirectionPin(&gpio, RUN_LED_PIN, 1)` 与 `XGpioPs_SetOutputEnablePin(&gpio, RUN_LED_PIN, 1)`，将 MIO42 设为输出并使能驱动。
+   - **`TODO 3`（循环翻转与串口打印）**：在 `while (1)` 中调用 `XGpioPs_WritePin(&gpio, RUN_LED_PIN, level)` 输出电平，用 `xil_printf` 打印当前计数 `n` 与 `level`（注意换行符写 `\r\n`），调用 `usleep(HALF_PERIOD_US)` 延时 0.5 s，随后将 `level` 取反（`level = !level;` 或 `level ^= 1;`）并使 `n` 加 1。
 3. 编译并运行，观察串口输出与 RUN 灯。
 
 **说明。**
