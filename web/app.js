@@ -11,8 +11,11 @@
   const HOSTED = !/^(localhost|127\.0\.0\.1|\[::1\]|)$/.test(location.hostname);
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  let state = { checks: {}, contract: {}, notes: {}, general: "" };
+  let state = { checks: {}, contract: {}, notes: {}, general: "", bookmarks: {} };
   let serverOK = false;
+  let activeTarget = "";
+  const expandedToc = new Set();
+  const TOC_COLLAPSE_KEY = "fpga-route-toc-collapsed";
 
   // ---------- helpers ----------
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -311,11 +314,13 @@
       const done = isDone(s), current = s === currentStage();
       const badge = done ? `<span class="status-badge done">已完成</span>` : current ? `<span class="status-badge current">当前阶段</span>` : "";
       const tags = s.layers.map((l) => `<span class="layer-tag">${esc(l)}</span>`).join("");
+      const bmIcon = `<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
       return `<section class="stage ${s.domain}${done ? " done" : ""}${current ? " current" : ""}" id="${s.id}" aria-labelledby="${s.id}-h">
         <div class="stage-head">
           ${s.branch
             ? `<span class="stage-n">${stageLabel(s)}</span><h2 id="${s.id}-h">${esc(s.title)}</h2>`
             : `<h2 id="${s.id}-h"><span class="stage-n">${stageLabel(s)}<span class="sep">：</span></span>${esc(s.title)}</h2>`}
+          <button type="button" class="bm-btn" data-bm="${s.id}" aria-label="将${stageLabel(s)}加入书签" aria-pressed="false" title="加入书签">${bmIcon}</button>
         </div>
         <div class="stage-meta">
           ${badge}
@@ -327,10 +332,10 @@
         ${done ? `<details class="stage-body"><summary>这一阶段已完成，展开查看内容</summary>` : ""}
         <p class="stage-why">${esc(s.why)}</p>
 
-        <p class="h4">要掌握的概念</p>
+        <p class="h4" id="${s.id}-concepts">要掌握的概念</p>
         <ul class="concepts">${s.concepts.map((c) => `<li>${concept(c)}</li>`).join("")}</ul>
 
-        <p class="h4">动手任务</p>
+        <p class="h4" id="${s.id}-tasks">动手任务</p>
         <ul class="tasks">${tasks}</ul>
 
         <div class="deliverable"><b>验收标准</b>${esc(s.deliverable)}</div>
@@ -339,10 +344,10 @@
         ${harnessBlock(s)}
 
         <div class="stage-lower">
-          <div><p class="h4">学习资料</p><ul>${res}</ul></div>
-          <div><p class="h4">容易踩的坑</p><ul>${pits}</ul></div>
+          <div><p class="h4" id="${s.id}-resources">学习资料</p><ul>${res}</ul></div>
+          <div><p class="h4" id="${s.id}-pitfalls">容易踩的坑</p><ul>${pits}</ul></div>
           <div class="discuss">
-            <p class="h4">待讨论</p>
+            <p class="h4" id="${s.id}-discuss">待讨论</p>
             ${qs}
             <textarea class="notes" data-note="${s.id}" rows="3" aria-label="${stageLabel(s)}讨论笔记"
               placeholder="写下你的回答、疑问或想调整的地方"></textarea>
@@ -357,23 +362,87 @@
     syncPrintNotes();
   }
 
+  const EXTRA_META = [
+    ["errata", "硬件资料与实验勘误"],
+    ["harness", "和 AI 助手协同"],
+    ["stack", "在 AI 系统栈中的位置"],
+    ["venues", "投稿目标"],
+    ["boards", "你的板卡（两块）"],
+    ["skills", "硬件周边技能要不要学"],
+    ["contract", "量化与数据格式约定"],
+    ["general", "总体讨论"],
+  ];
+
+  function bookmarkTitle(id) {
+    const st = ALL.find((s) => s.id === id);
+    if (st) return `${code(st)} ${st.short}`;
+    const ex = EXTRA_META.find(([k]) => k === id);
+    return ex ? ex[1] : id;
+  }
+
   function renderToc() {
-    $("#toc-list").innerHTML = STAGES.map((s, i) => {
+    const subItems = (s) => [
+      [`${s.id}-concepts`, "概念"],
+      [`${s.id}-tasks`, "动手任务"],
+      [`${s.id}-resources`, "学习资料"],
+      [`${s.id}-pitfalls`, "容易踩的坑"],
+      [`${s.id}-discuss`, "待讨论"],
+    ];
+    const row = (s, i, isBranch) => {
       const p = progress(s);
+      const isCur = !isBranch && s === currentStage();
+      const open = expandedToc.has(s.id);
+      const cls = [isCur ? "toc-current" : "", open ? "toc-expanded" : ""].filter(Boolean).join(" ");
+      const numCls = isBranch ? "branch" : s.domain;
+      const numText = isBranch ? "支线" : `S${i}`;
+      const sub = open
+        ? `<ul class="toc-sub">${subItems(s).map(([id, label]) => `<li><a href="#${id}" data-toc-target="${id}">${label}</a></li>`).join("")}</ul>`
+        : "";
+      return `<li${cls ? ` class="${cls}"` : ""}>
+        <div class="toc-item">
+          <button type="button" class="toc-exp" data-toc-exp="${s.id}" aria-expanded="${open ? "true" : "false"}" aria-label="${open ? "折叠" : "展开"}${esc(s.short)}子目录">${open ? "▾" : "▸"}</button>
+          <a href="#${s.id}" data-toc-target="${s.id}">
+            <span class="toc-n ${numCls}">${numText}</span>
+            <span class="toc-title">${esc(s.short)}</span>
+            <span class="toc-count${p.done === p.total ? " full" : ""}">${p.done}/${p.total}</span>
+          </a>
+        </div>
+        ${sub}
+      </li>`;
+    };
+    $("#toc-list").innerHTML = STAGES.map((s, i) => {
       const cut = i === 5 ? `<li class="toc-cut">部署阶段</li>` : "";
-      return `${cut}<li${s === currentStage() ? ' class="toc-current"' : ""}><a href="#${s.id}">
-        <span class="toc-n ${s.domain}">S${i}</span>
-        <span class="toc-title">${esc(s.short)}</span>
-        <span class="toc-count${p.done === p.total ? " full" : ""}">${p.done}/${p.total}</span>
-      </a></li>`;
-    }).join("") + (() => {
-      const p = progress(BRANCH);
-      return `<li class="toc-cut">可选支线</li><li><a href="#${BRANCH.id}">
-        <span class="toc-n branch">支线</span>
-        <span class="toc-title">${esc(BRANCH.short)}</span>
-        <span class="toc-count${p.done === p.total ? " full" : ""}">${p.done}/${p.total}</span>
-      </a></li>`;
-    })();
+      return `${cut}${row(s, i, false)}`;
+    }).join("") + `<li class="toc-cut">可选支线</li>${row(BRANCH, 0, true)}`;
+    renderBookmarks();
+    if (activeTarget) applyActiveToc(activeTarget);
+  }
+
+  function renderBookmarks() {
+    const bm = state.bookmarks || {};
+    const order = ["errata", ...ALL.map((s) => s.id), ...EXTRA_META.map(([k]) => k).filter((k) => k !== "errata")];
+    const pinned = order.filter((id) => bm[id]);
+    const box = $("#toc-pinned");
+    const list = $("#toc-pinned-list");
+    if (box && list) {
+      box.hidden = pinned.length === 0;
+      list.innerHTML = pinned.map((id) => `<li>
+        <a href="#${id}" data-toc-target="${id}">
+          <span class="toc-pin-dot" aria-hidden="true"></span>
+          <span class="toc-pin-title">${esc(bookmarkTitle(id))}</span>
+        </a>
+        <button type="button" class="toc-unpin" data-unpin="${id}" aria-label="移除书签 ${esc(bookmarkTitle(id))}" title="移除书签">×</button>
+      </li>`).join("");
+    }
+    document.querySelectorAll(".bm-btn[data-bm]").forEach((btn) => {
+      const on = !!bm[btn.dataset.bm];
+      btn.classList.toggle("is-bookmarked", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.title = on ? "已加入书签（点击取消）" : "加入书签";
+    });
+    document.querySelectorAll("#toc-drawer a[data-toc-target]").forEach((a) => {
+      a.classList.toggle("is-pinned", !!bm[a.dataset.tocTarget]);
+    });
   }
 
   function renderBoards() {
@@ -564,9 +633,86 @@
       } catch (_) { /* 没有快照就从空白开始 */ }
     }
     if (loaded) state = { ...state, ...loaded };
+    if (!state.bookmarks || typeof state.bookmarks !== "object") state.bookmarks = {};
     delete state.hours; // 旧版本按每周小时数换算，已改为按阶段小时数
     setStatus(serverOK ? "勾选和笔记会自动保存到 notes/ 目录"
       : HOSTED ? "在线版：勾选和笔记只保存在这个浏览器里" : "没连上本地服务，改动只存在浏览器里。请用 ./start.sh 启动。", !serverOK && !HOSTED);
+  }
+
+  // ---------- reader bookmarks & scroll-spy ----------
+  const isNarrowLayout = () => window.matchMedia("(max-width: 960px)").matches;
+
+  function applyActiveToc(id) {
+    activeTarget = id;
+    const links = document.querySelectorAll("#toc-drawer a[data-toc-target]");
+    let firstHit = null;
+    links.forEach((a) => {
+      const hit = a.dataset.tocTarget === id;
+      a.classList.toggle("toc-active", hit);
+      if (hit && !firstHit && !a.closest("#toc-pinned")) firstHit = a;
+    });
+    if (firstHit) {
+      const scroller = $("#toc-scroll");
+      if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+        const sr = scroller.getBoundingClientRect();
+        const ar = firstHit.getBoundingClientRect();
+        if (ar.top < sr.top + 8) scroller.scrollTop -= (sr.top + 8 - ar.top);
+        else if (ar.bottom > sr.bottom - 8) scroller.scrollTop += (ar.bottom - sr.bottom + 8);
+      }
+    }
+  }
+
+  function setDrawerOpen(open) {
+    document.body.classList.toggle("toc-open", open);
+    const backdrop = $("#toc-backdrop");
+    const fab = $("#toc-fab");
+    if (backdrop) backdrop.hidden = !open;
+    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function setDesktopCollapsed(collapsed) {
+    document.body.classList.toggle("toc-collapsed", collapsed);
+    try { localStorage.setItem(TOC_COLLAPSE_KEY, collapsed ? "1" : "0"); } catch (_) {}
+  }
+
+  function openParentDetails(target) {
+    const det = target && target.closest("details.stage-body");
+    if (det && !det.open) det.open = true;
+  }
+
+  function setupScrollSpy() {
+    const ids = [
+      "top", "planner", "errata",
+      ...ALL.map((s) => s.id),
+      ...EXTRA_META.map(([k]) => k).filter((k) => k !== "errata"),
+    ];
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 16;
+      if (atBottom) {
+        applyActiveToc("general");
+        return;
+      }
+      const probe = 130;
+      let chosen = ids[0];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= probe) chosen = id;
+        else break;
+      }
+      if (chosen !== activeTarget) applyActiveToc(chosen);
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    update();
   }
 
   // ---------- events ----------
@@ -581,15 +727,71 @@
       if (t.dataset.note) { state.notes[t.dataset.note] = t.value; syncPrintNotes(); save(); }
       else if (t.id === "general-notes") { state.general = t.value; syncPrintNotes(); save(); }
     });
+    document.addEventListener("click", (e) => {
+      const exp = e.target.closest("[data-toc-exp]");
+      if (exp) {
+        const id = exp.dataset.tocExp;
+        if (expandedToc.has(id)) expandedToc.delete(id);
+        else expandedToc.add(id);
+        renderToc();
+        return;
+      }
+      const bm = e.target.closest(".bm-btn[data-bm]");
+      if (bm) {
+        const id = bm.dataset.bm;
+        if (state.bookmarks[id]) delete state.bookmarks[id];
+        else state.bookmarks[id] = true;
+        renderBookmarks();
+        save();
+        return;
+      }
+      const unpin = e.target.closest("[data-unpin]");
+      if (unpin) {
+        delete state.bookmarks[unpin.dataset.unpin];
+        renderBookmarks();
+        save();
+        return;
+      }
+      const tocLink = e.target.closest("#toc-drawer a[href^='#']");
+      if (tocLink) {
+        const id = tocLink.getAttribute("href").slice(1);
+        const target = document.getElementById(id);
+        if (target) {
+          openParentDetails(target);
+          applyActiveToc(id);
+        }
+        if (isNarrowLayout()) setDrawerOpen(false);
+      }
+    });
+    const fab = $("#toc-fab");
+    if (fab) {
+      fab.addEventListener("click", () => {
+        if (isNarrowLayout()) setDrawerOpen(!document.body.classList.contains("toc-open"));
+        else setDesktopCollapsed(false);
+      });
+    }
+    const closeBtn = $("#toc-close");
+    if (closeBtn) closeBtn.addEventListener("click", () => setDrawerOpen(false));
+    const backdrop = $("#toc-backdrop");
+    if (backdrop) backdrop.addEventListener("click", () => setDrawerOpen(false));
+    const collapseBtn = $("#toc-collapse");
+    if (collapseBtn) collapseBtn.addEventListener("click", () => setDesktopCollapsed(true));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.body.classList.contains("toc-open")) setDrawerOpen(false);
+    });
     let lastMode = window.innerWidth >= 760;
     window.addEventListener("resize", () => {
       const m = window.innerWidth >= 760;
       if (m !== lastMode) { lastMode = m; renderMap(); }
+      if (!isNarrowLayout() && document.body.classList.contains("toc-open")) setDrawerOpen(false);
     });
   }
 
   async function init() {
     await load();
+    try {
+      if (localStorage.getItem(TOC_COLLAPSE_KEY) === "1") document.body.classList.add("toc-collapsed");
+    } catch (_) {}
     renderPlanner();
     renderStages();
     renderToc();
@@ -608,8 +810,12 @@
     // 内容是异步渲染的，浏览器自带的锚点跳转发生得太早，这里补一次
     if (location.hash) {
       const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-      if (target) target.scrollIntoView({ block: "start", behavior: "instant" });
+      if (target) {
+        openParentDetails(target);
+        target.scrollIntoView({ block: "start", behavior: "instant" });
+      }
     }
+    setupScrollSpy();
   }
 
   init();

@@ -15,7 +15,7 @@
 <body>
   <a class="skip" href="#stages">跳到阶段详情</a>
 
-  <header class="hero">
+  <header class="hero" id="top">
     <div class="wrap">
       <h1>从门电路到大模型</h1>
       <p class="subtitle">FPGA 部署 AI 模型的学习路线</p>
@@ -61,155 +61,219 @@
   </section>
 
   <div class="wrap layout">
-    <nav class="toc" aria-label="阶段目录">
-      <ol id="toc-list"></ol>
-      <ul class="toc-extra">
-        <li><a href="#harness">和 AI 助手协同</a></li>
-        <li><a href="#stack">在 AI 系统栈中的位置</a></li>
-        <li><a href="#venues">投稿目标</a></li>
-        <li><a href="#boards">你的板卡（两块）</a></li>
-        <li><a href="#errata">硬件与实验勘误</a></li>
-        <li><a href="#skills">硬件周边技能要不要学</a></li>
-        <li><a href="#contract">量化与数据格式约定</a></li>
-        <li><a href="#general">总体讨论</a></li>
-      </ul>
-      <p class="save-status" id="save-status" aria-live="polite"></p>
-    </nav>
+    <aside class="toc" id="toc-drawer" aria-label="目录与书签">
+      <div class="toc-head">
+        <span class="toc-brand">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          <span>目录书签</span>
+        </span>
+        <div class="toc-actions">
+          <a class="toc-top-btn" href="#top" data-toc-target="top" title="回到顶部">顶部</a>
+          <button type="button" class="toc-collapse" id="toc-collapse" aria-label="收起书签栏" title="收起书签栏">«</button>
+          <button type="button" class="toc-close" id="toc-close" aria-label="关闭书签栏" title="关闭">×</button>
+        </div>
+      </div>
 
-    <main id="stages"></main>
+      <div class="toc-scroll" id="toc-scroll">
+        <div class="toc-pinned" id="toc-pinned" hidden>
+          <div class="toc-group-label">我的书签</div>
+          <ul id="toc-pinned-list"></ul>
+        </div>
+
+        <ul class="toc-top-errata">
+          <li><a href="#errata" data-toc-target="errata">硬件资料与实验勘误</a></li>
+        </ul>
+
+        <div class="toc-group-label">总览</div>
+        <ul class="toc-overview">
+          <li><a href="#top" data-toc-target="top">布线图与概况</a></li>
+          <li><a href="#planner" data-toc-target="planner">工作量与进度</a></li>
+        </ul>
+
+        <div class="toc-group-label">学习阶段</div>
+        <ol id="toc-list"></ol>
+
+        <div class="toc-group-label">附录与参考</div>
+        <ul class="toc-extra" id="toc-extra">
+          <li><a href="#harness" data-toc-target="harness">和 AI 助手协同</a></li>
+          <li><a href="#stack" data-toc-target="stack">在 AI 系统栈中的位置</a></li>
+          <li><a href="#venues" data-toc-target="venues">投稿目标</a></li>
+          <li><a href="#boards" data-toc-target="boards">你的板卡（两块）</a></li>
+          <li><a href="#skills" data-toc-target="skills">硬件周边技能要不要学</a></li>
+          <li><a href="#contract" data-toc-target="contract">量化与数据格式约定</a></li>
+          <li><a href="#general" data-toc-target="general">总体讨论</a></li>
+        </ul>
+      </div>
+
+      <p class="save-status" id="save-status" aria-live="polite"></p>
+    </aside>
+
+    <div class="content-col">
+      <section class="extra extra-top" id="errata">
+        <div class="extra-head">
+          <h2>硬件资料与实验勘误</h2>
+          <button type="button" class="bm-btn" data-bm="errata" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">
+          上板实测过程中核实出的文档勘误、引脚更正与工具链避坑记录，随实验推进持续补充。
+        </p>
+        <div class="table-scroll">
+          <table class="boards errata-table">
+            <thead>
+              <tr><th>位置</th><th>原写法 / 问题</th><th>更正与实测结论</th></tr>
+            </thead>
+            <tbody id="errata-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <main id="stages"></main>
+
+      <section class="extra" id="harness">
+        <div class="extra-head">
+          <h2>和 AI 编程助手协同</h2>
+          <button type="button" class="bm-btn" data-bm="harness" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">
+          这里的 harness 指 Claude Code、Codex 这类能在你的工程目录里读写文件、跑命令的 AI 编程助手。
+          学习过程中有大量重复、或者本来就不该由你来做的工作，交给它；要学的核心能力自己练，验收标准由你定。
+          每个阶段都有一栏“和 AI 助手的分工”，按下面三类划分。照这个分工，主线预计能省约 <strong id="harness-save"></strong> 小时。
+        </p>
+        <ul class="hn-rules" id="harness-rules"></ul>
+        <div class="hn-two">
+          <div>
+            <p class="h3">先搭好的基础设施</p>
+            <ul class="hn-setup" id="harness-setup"></ul>
+          </div>
+          <div>
+            <p class="h3">红线</p>
+            <ul class="hn-red" id="harness-red"></ul>
+          </div>
+        </div>
+        <p class="h3 later-title">各阶段交给 AI 的部分</p>
+        <div class="table-scroll">
+          <table class="boards hn-table">
+            <thead><tr><th>阶段</th><th>小时</th><th>可省</th><th>交给 AI 的工作</th></tr></thead>
+            <tbody id="harness-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="extra" id="stack">
+        <div class="extra-head">
+          <h2>这条路线在 AI 系统栈中的位置</h2>
+          <button type="button" class="bm-btn" data-bm="stack" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">
+          AI infra 自上而下大致分六层。这条路线以最底下的硬件层为主体，向上覆盖算子、编译和运行时三层，可以算作 FPGA 版的 AI infra 下半部分。
+          每个阶段标题下的层次标签对应这里的分层，第一个是主要层次。下面每层列出的阶段里，加粗的是以该层为主的阶段。
+        </p>
+        <ol class="stack" id="stack-list"></ol>
+      </section>
+
+      <section class="extra" id="venues">
+        <div class="extra-head">
+          <h2>投稿目标</h2>
+          <button type="button" class="bm-btn" data-bm="venues" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">
+          这条路线做的是 FPGA 上的端侧 AI 加速，偏软硬件协同设计，主战场是 CCF“计算机体系结构 / 并行与分布计算 / 存储系统”一类，其中最对口的 A 类会议是 DAC。
+          等级按 ccfddl 开源数据核对（2026 年 11 月）。各校认定的 CCF 目录版本和毕业要求不同，先和导师确认。
+        </p>
+        <div class="table-scroll">
+          <table class="boards venues">
+            <thead><tr><th>等级</th><th>会议或期刊</th><th>匹配度</th><th>说明</th></tr></thead>
+            <tbody id="venue-rows"></tbody>
+          </table>
+        </div>
+        <p class="h3 later-title">按路线产出安排投稿</p>
+        <div class="table-scroll">
+          <table class="boards venue-path">
+            <thead><tr><th>时间点</th><th>可能的论文</th><th>建议目标</th></tr></thead>
+            <tbody id="venue-path"></tbody>
+          </table>
+        </div>
+        <p class="h3 later-title">路线里读过的论文发在哪</p>
+        <ul class="venue-refs" id="venue-refs"></ul>
+      </section>
+
+      <section class="extra" id="boards">
+        <div class="extra-head">
+          <h2>开发板：EdgeBoard FZ5D 必备，AXU4EVB-E 选做对照</h2>
+          <button type="button" class="bm-btn" data-bm="boards" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">
+          主线全部在 FZ5D 上完成，所有必做的上板实验只需要这一块板。若另有 AXU4EVB-E，每个阶段可挑一件事在其上再做一遍，体会换一个硬件环境要改什么、性能怎么变；这些任务标注“选做”，不计入进度。
+          两块板芯片同代、PS 侧内存带宽相同，差别在 DSP 数量、内存容量、有没有 PL 侧 DDR、厂家资料和接口，每一项差别都对应一个能做的对照实验。
+        </p>
+        <p class="h3 board-name" id="lab-board-name"></p>
+        <p class="board-lead" id="lab-board-lead"></p>
+        <div class="board-grid" id="lab-board"></div>
+        <p class="h3 board-name later-title">选做对照板：ALINX AXU4EVB-E V3.0</p>
+        <p class="board-lead">
+          没有这块板不影响任何阶段的完成。核心板参数来自 ALINX 的 ACU4EV 核心板手册，芯片资源来自 AMD 的选型资料；
+          载板上的接口（MIPI、HDMI/DP 等）我没能读到这块板的手册原文，请以 ALINX 官方手册为准。
+        </p>
+        <div class="board-grid" id="my-board"></div>
+        <p class="h3 later-title">两块板怎么配合（对照部分为选做）</p>
+        <div class="table-scroll">
+          <table class="boards board-split">
+            <thead><tr><th>阶段</th><th>在 FZ5D 上做</th><th>有 AXU4EVB-E 时的对照（选做），体会什么</th></tr></thead>
+            <tbody id="board-split"></tbody>
+          </table>
+        </div>
+        <p class="board-lead board-fallback" id="board-fallback"></p>
+        <p class="h3 later-title">两块板都不够用时</p>
+        <div class="table-scroll">
+          <table class="boards">
+            <thead>
+              <tr><th>板卡</th><th>芯片</th><th>关键资源</th><th>价格</th><th>覆盖阶段</th><th>说明</th></tr>
+            </thead>
+            <tbody id="board-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="extra" id="skills">
+        <div class="extra-head">
+          <h2>硬件周边技能要不要学</h2>
+          <button type="button" class="bm-btn" data-bm="skills" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">
+          FPGA 和嵌入式领域的技能很多，但你的目标是部署 AI 模型。判断标准只有一个：它会不会出现在“模型 → 加速器 → 板上运行”这条链路上。
+        </p>
+        <ul class="skills" id="skill-list"></ul>
+      </section>
+
+      <section class="extra" id="contract">
+        <div class="extra-head">
+          <h2>量化与数据格式约定</h2>
+          <button type="button" class="bm-btn" data-bm="contract" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">
+          量化结果的格式直接决定硬件怎么设计。每一项都先按最常见的默认做法来，自己用公开工具完成量化，不等量化同学；
+          跑通之后再尝试后面列的方向，同学的成果到了再对照替换。勾选表示这一项已经按默认值落实。
+        </p>
+        <ul class="contract" id="contract-list"></ul>
+      </section>
+
+      <section class="extra" id="general">
+        <div class="extra-head">
+          <h2>总体讨论</h2>
+          <button type="button" class="bm-btn" data-bm="general" aria-label="将此节加入书签" title="加入书签"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        </div>
+        <p class="section-lead">对整条路线的疑问、想调整的地方写在这里。和各阶段下的笔记一起，自动保存到 <code>notes/讨论记录.md</code>。</p>
+        <textarea id="general-notes" class="notes big" rows="8" placeholder="例如：实验室能拿到哪块板？哪个阶段想多花时间？"></textarea>
+        <div class="print-notes" data-print-note="general"></div>
+      </section>
+    </div>
   </div>
 
-  <section class="wrap extra" id="harness">
-    <h2>和 AI 编程助手协同</h2>
-    <p class="section-lead">
-      这里的 harness 指 Claude Code、Codex 这类能在你的工程目录里读写文件、跑命令的 AI 编程助手。
-      学习过程中有大量重复、或者本来就不该由你来做的工作，交给它；要学的核心能力自己练，验收标准由你定。
-      每个阶段都有一栏“和 AI 助手的分工”，按下面三类划分。照这个分工，主线预计能省约 <strong id="harness-save"></strong> 小时。
-    </p>
-    <ul class="hn-rules" id="harness-rules"></ul>
-    <div class="hn-two">
-      <div>
-        <p class="h3">先搭好的基础设施</p>
-        <ul class="hn-setup" id="harness-setup"></ul>
-      </div>
-      <div>
-        <p class="h3">红线</p>
-        <ul class="hn-red" id="harness-red"></ul>
-      </div>
-    </div>
-    <p class="h3 later-title">各阶段交给 AI 的部分</p>
-    <div class="table-scroll">
-      <table class="boards hn-table">
-        <thead><tr><th>阶段</th><th>小时</th><th>可省</th><th>交给 AI 的工作</th></tr></thead>
-        <tbody id="harness-table"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="wrap extra" id="stack">
-    <h2>这条路线在 AI 系统栈中的位置</h2>
-    <p class="section-lead">
-      AI infra 自上而下大致分六层。这条路线以最底下的硬件层为主体，向上覆盖算子、编译和运行时三层，可以算作 FPGA 版的 AI infra 下半部分。
-      每个阶段标题下的层次标签对应这里的分层，第一个是主要层次。下面每层列出的阶段里，加粗的是以该层为主的阶段。
-    </p>
-    <ol class="stack" id="stack-list"></ol>
-  </section>
-
-  <section class="wrap extra" id="venues">
-    <h2>投稿目标</h2>
-    <p class="section-lead">
-      这条路线做的是 FPGA 上的端侧 AI 加速，偏软硬件协同设计，主战场是 CCF“计算机体系结构 / 并行与分布计算 / 存储系统”一类，其中最对口的 A 类会议是 DAC。
-      等级按 ccfddl 开源数据核对（2026 年 11 月）。各校认定的 CCF 目录版本和毕业要求不同，先和导师确认。
-    </p>
-    <div class="table-scroll">
-      <table class="boards venues">
-        <thead><tr><th>等级</th><th>会议或期刊</th><th>匹配度</th><th>说明</th></tr></thead>
-        <tbody id="venue-rows"></tbody>
-      </table>
-    </div>
-    <p class="h3 later-title">按路线产出安排投稿</p>
-    <div class="table-scroll">
-      <table class="boards venue-path">
-        <thead><tr><th>时间点</th><th>可能的论文</th><th>建议目标</th></tr></thead>
-        <tbody id="venue-path"></tbody>
-      </table>
-    </div>
-    <p class="h3 later-title">路线里读过的论文发在哪</p>
-    <ul class="venue-refs" id="venue-refs"></ul>
-  </section>
-
-  <section class="wrap extra" id="boards">
-    <h2>开发板：EdgeBoard FZ5D 必备，AXU4EVB-E 选做对照</h2>
-    <p class="section-lead">
-      主线全部在 FZ5D 上完成，所有必做的上板实验只需要这一块板。若另有 AXU4EVB-E，每个阶段可挑一件事在其上再做一遍，体会换一个硬件环境要改什么、性能怎么变；这些任务标注“选做”，不计入进度。
-      两块板芯片同代、PS 侧内存带宽相同，差别在 DSP 数量、内存容量、有没有 PL 侧 DDR、厂家资料和接口，每一项差别都对应一个能做的对照实验。
-    </p>
-    <p class="h3 board-name" id="lab-board-name"></p>
-    <p class="board-lead" id="lab-board-lead"></p>
-    <div class="board-grid" id="lab-board"></div>
-    <p class="h3 board-name later-title">选做对照板：ALINX AXU4EVB-E V3.0</p>
-    <p class="board-lead">
-      没有这块板不影响任何阶段的完成。核心板参数来自 ALINX 的 ACU4EV 核心板手册，芯片资源来自 AMD 的选型资料；
-      载板上的接口（MIPI、HDMI/DP 等）我没能读到这块板的手册原文，请以 ALINX 官方手册为准。
-    </p>
-    <div class="board-grid" id="my-board"></div>
-    <p class="h3 later-title">两块板怎么配合（对照部分为选做）</p>
-    <div class="table-scroll">
-      <table class="boards board-split">
-        <thead><tr><th>阶段</th><th>在 FZ5D 上做</th><th>有 AXU4EVB-E 时的对照（选做），体会什么</th></tr></thead>
-        <tbody id="board-split"></tbody>
-      </table>
-    </div>
-    <p class="board-lead board-fallback" id="board-fallback"></p>
-    <p class="h3 later-title">两块板都不够用时</p>
-    <div class="table-scroll">
-      <table class="boards">
-        <thead>
-          <tr><th>板卡</th><th>芯片</th><th>关键资源</th><th>价格</th><th>覆盖阶段</th><th>说明</th></tr>
-        </thead>
-        <tbody id="board-rows"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="wrap extra" id="errata">
-    <h2>硬件资料与实验勘误</h2>
-    <p class="section-lead">
-      上板实测过程中核实出的文档勘误、引脚更正与工具链避坑记录，随实验推进持续补充。
-    </p>
-    <div class="table-scroll">
-      <table class="boards errata-table">
-        <thead>
-          <tr><th>位置</th><th>原写法 / 问题</th><th>更正与实测结论</th></tr>
-        </thead>
-        <tbody id="errata-rows"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="wrap extra" id="skills">
-    <h2>硬件周边技能要不要学</h2>
-    <p class="section-lead">
-      FPGA 和嵌入式领域的技能很多，但你的目标是部署 AI 模型。判断标准只有一个：它会不会出现在“模型 → 加速器 → 板上运行”这条链路上。
-    </p>
-    <ul class="skills" id="skill-list"></ul>
-  </section>
-
-  <section class="wrap extra" id="contract">
-    <h2>量化与数据格式约定</h2>
-    <p class="section-lead">
-      量化结果的格式直接决定硬件怎么设计。每一项都先按最常见的默认做法来，自己用公开工具完成量化，不等量化同学；
-      跑通之后再尝试后面列的方向，同学的成果到了再对照替换。勾选表示这一项已经按默认值落实。
-    </p>
-    <ul class="contract" id="contract-list"></ul>
-  </section>
-
-  <section class="wrap extra" id="general">
-    <h2>总体讨论</h2>
-    <p class="section-lead">对整条路线的疑问、想调整的地方写在这里。和各阶段下的笔记一起，自动保存到 <code>notes/讨论记录.md</code>。</p>
-    <textarea id="general-notes" class="notes big" rows="8" placeholder="例如：实验室能拿到哪块板？哪个阶段想多花时间？"></textarea>
-    <div class="print-notes" data-print-note="general"></div>
-  </section>
+  <div class="toc-backdrop" id="toc-backdrop" hidden></div>
+  <button type="button" class="toc-fab" id="toc-fab" aria-controls="toc-drawer" aria-expanded="false" title="打开目录与书签">
+    <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h9a1 1 0 0 1 1 1v12l-5.5-3.3-5.5 3.3v-12a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    <span>书签</span>
+  </button>
 
   <footer class="wrap foot">
     <p>各阶段小时数为零基础下的估算投入。路线内容在 <code>web/data.js</code>，改完刷新页面即可；运行 <code>./make_pdf.sh</code> 可重新导出 PDF。</p>
