@@ -84,7 +84,7 @@ end
 - Bank 1：MIO26–MIO51（对应 **GPIO 1 MIO**）；
 - Bank 2：MIO52–MIO77（对应 **GPIO 2 MIO**）。
 
-FZ5D 的 RUN 指示灯 D46 接在 **MIO42**，属于 Bank 1，这正是第二步在 Vivado 中勾选 *GPIO 0 MIO* 与 *GPIO 1 MIO* 的原因。在 Xilinx 的 `xgpiops` 驱动中，MIO 引脚的软件引脚号直接等于 MIO 编号，因此 `ps_led.c` 定义 `#define RUN_LED_PIN 42`（只有引向 PL 侧的 EMIO 引脚才从 78 起算）。
+FZ5D 的 RUN 指示灯 D46 接在 **MIO43**（球号 `K19`，网络名 `SYS_STATUS_LED`；注意 MIO42 为风扇控制 `FAN_CTRL`），属于 Bank 1，这正是第二步在 Vivado 中勾选 *GPIO 0 MIO* 与 *GPIO 1 MIO* 的原因。在 Xilinx 的 `xgpiops` 驱动中，MIO 引脚的软件引脚号直接等于 MIO 编号，因此 `ps_led.c` 定义 `#define RUN_LED_PIN 43`（只有引向 PL 侧的 EMIO 引脚才从 78 起算）。
 
 **2. 为什么 GPIO 输出需要“设方向”和“使能输出”两步。** PS 的每个 GPIO 引脚内部同时包含输入缓冲器、输出数据锁存器与三态输出驱动门。芯片上电复位后，所有引脚默认处于高阻输入态，以防止在软件配置之前与外部电路发生电平冲突。因此将其配置为输出时，须依次完成两步：先将方向（Direction）设为输出（`1` 为输出，`0` 为输入），再开启输出使能（Output Enable，`1` 允许驱动外部引脚，`0` 保持高阻三态），此后写入的数据电平才会驱动三极管 Q2 与 RUN 灯。
 
@@ -121,9 +121,10 @@ FZ5D 的 RUN 指示灯 D46 接在 **MIO42**，属于 Bank 1，这正是第二步
 | 资源 | 位置与连接 | 说明 |
 |---|---|---|
 | 芯片 | XCZU5EV，封装 SFVC784，Vivado 器件名 `xczu5ev-sfvc784-1-i` | 须核对芯片表面的型号标注 |
-| PS 侧 DDR | DDR4，64 位，8 GB（另有 4 GB 版本） | DDR 参数随版本不同，配置前须先确认手中板卡的容量 |
+| PS 侧 DDR | DDR4，64 位，8 GB（另有 4 GB 版本） | 8 GB 参数已在 FZ5D 上实机验证；配置前仍须确认手中板卡的容量 |
 | 调试串口 | J13（Micro-USB，CP2102N 桥接）→ PS UART0：MIO26 为 RX，MIO27 为 TX | 115200 波特，8 位数据，无校验，1 位停止，无流控 |
-| RUN 指示灯 | D46（绿色），经三极管 Q2 由 PS 的 MIO42 驱动 | **唯一可由程序控制的用户 LED**；有效电平待实物确认 |
+| RUN 指示灯 | D46（红绿双色灯：红色 `POWER` 常亮，绿色 `RUN` 经 NPN 三极管 Q2 由 PS 的 **MIO43** 驱动） | **唯一可由程序控制的用户 LED**（高电平有效，已实机验证）；闪烁时红绿叠加表现为纯红 ↔ 黄绿/橙色交替。注意：旧版笔记误作 MIO42，实际 MIO42 为风扇控制 `FAN_CTRL` |
+| 状态灯 D3 | D3（`PS_DONE`，绿色） | 配置完成后常亮绿光，不受用户程序控制，勿与 D46 混淆 |
 | 复位按键 | S1、S2 | 仅用于复位，不是用户按键 |
 | PL 侧用户 LED / 按键 | **无** | PL 的引脚只引到扩展接口 J15 与视频接口 |
 | PL 时钟 | 本实验使用 PS 输出的 `pl_clk0` | 不使用 PL 侧外部时钟 |
@@ -277,7 +278,7 @@ make wave     # 用 GTKWave 查看波形（wave.vcd）
    |---|---|
    | BANK0 至 BANK3 的 I/O 电压 | LVCMOS33 |
    | UART 0 | 勾选，引脚 MIO26..27 |
-   | GPIO 0 MIO、GPIO 1 MIO | 勾选（MIO42 属于 GPIO 1 组，即 MIO26–51） |
+   | GPIO 0 MIO、GPIO 1 MIO | 勾选（MIO43 属于 GPIO 1 组，即 MIO26–51） |
 
    **Clock Configuration**
 
@@ -328,30 +329,60 @@ make wave     # 用 GTKWave 查看波形（wave.vcd）
 5. 右击应用工程，选择 **Build Project**。
 6. 右击应用工程，选择 **Run As → Run Configurations…**，新建 *Single Application Debug*，确认勾选 *Reset entire system*，然后运行（**Run**）。
 
-串口终端应当输出：
+串口终端应当输出（先由 FSBL 打印引导信息，随后运行应用程序）：
 
 ```
+Zynq MP First Stage Boot Loader
+Release 2023.1   ...
+PMU-FW is not running, certain applications may not be supported.
 Hello World
 Successfully ran Hello World application
 ```
 
-至此 PS、DDR、串口与 JTAG 均已验证。
+其中 `PMU-FW is not running` 为 Vitis 裸机单应用调试（默认仅运行 FSBL、不额外加载电源管理固件 PMUFW）的正常提示，不影响本实验及后续裸机阶段的串口、GPIO 与 PL 调试。至此 PS、8 GB DDR4、串口与 JTAG 均已验证。
 
 ## 第三步：用 PS 的 GPIO 驱动 RUN 灯
 
-目标：让 RUN 灯（D46，PS 的 MIO42）以 1 Hz 闪烁，并每 0.5 s 通过串口输出一行计数。
+目标：让 RUN 灯（D46，PS 的 **MIO43**）以 1 Hz 闪烁，并每 0.5 s 通过串口输出一行计数。
 
 1. 以 `ps_led.c` 作为框架：将 `hello_world` 工程中 `helloworld.c` 的内容替换为 `ps_led.c` 的内容。
-2. 先阅读「背景知识」中「PS 侧 GPIO 与 Vitis 裸机编程基础」一节，再在 Vitis 中展开 Platform 工程，依次打开 BSP 与 `gpiops` 驱动，利用 *Import Examples* 中的 `xgpiops_polled_example` 对照实际调用顺序与错误检查写法，完成 `ps_led.c` 中三处 `TODO`：
+2. 先阅读「背景知识」中「PS 侧 GPIO 与 Vitis 裸机编程基础」一节，再对照 BSP 中的 `xgpiops_polled_example` 理解调用顺序，完成 `ps_led.c` 中三处 `TODO`：
    - **`TODO 1`（查找配置并初始化）**：调用 `XGpioPs_LookupConfig(XPAR_XGPIOPS_0_DEVICE_ID)` 获取 `cfg`，检查是否为 `NULL`；随后调用 `XGpioPs_CfgInitialize(&gpio, cfg, cfg->BaseAddr)`，检查返回值是否为 `XST_SUCCESS`。初始化失败时可 `return XST_FAILURE;`。
-   - **`TODO 2`（配置方向与输出使能）**：依次调用 `XGpioPs_SetDirectionPin(&gpio, RUN_LED_PIN, 1)` 与 `XGpioPs_SetOutputEnablePin(&gpio, RUN_LED_PIN, 1)`，将 MIO42 设为输出并使能驱动。
+   - **`TODO 2`（配置方向与输出使能）**：依次调用 `XGpioPs_SetDirectionPin(&gpio, RUN_LED_PIN, 1)` 与 `XGpioPs_SetOutputEnablePin(&gpio, RUN_LED_PIN, 1)`，将 MIO43 设为输出并使能驱动。
    - **`TODO 3`（循环翻转与串口打印）**：在 `while (1)` 中调用 `XGpioPs_WritePin(&gpio, RUN_LED_PIN, level)` 输出电平，用 `xil_printf` 打印当前计数 `n` 与 `level`（注意换行符写 `\r\n`），调用 `usleep(HALF_PERIOD_US)` 延时 0.5 s，随后将 `level` 取反（`level = !level;` 或 `level ^= 1;`）并使 `n` 加 1。
-3. 编译并运行，观察串口输出与 RUN 灯。
+
+   若不熟悉 Xilinx BSP 驱动的 C 样板写法，可按如下参考实现补全 `main()` 主体（该部分属于外设初始化样板代码）：
+
+   ```c
+   cfg = XGpioPs_LookupConfig(XPAR_XGPIOPS_0_DEVICE_ID);
+   if (cfg == NULL) {
+       xil_printf("ERROR: XGpioPs_LookupConfig failed\r\n");
+       return XST_FAILURE;
+   }
+   status = XGpioPs_CfgInitialize(&gpio, cfg, cfg->BaseAddr);
+   if (status != XST_SUCCESS) {
+       xil_printf("ERROR: XGpioPs_CfgInitialize failed\r\n");
+       return XST_FAILURE;
+   }
+
+   XGpioPs_SetDirectionPin(&gpio, RUN_LED_PIN, 1);
+   XGpioPs_SetOutputEnablePin(&gpio, RUN_LED_PIN, 1);
+
+   while (1) {
+       XGpioPs_WritePin(&gpio, RUN_LED_PIN, level);
+       xil_printf("n = %u, level = %u\r\n", n, level);
+       usleep(HALF_PERIOD_US);
+       level = !level;
+       n++;
+   }
+   ```
+
+3. 保存文件并执行 **Build Project**，再运行程序，观察串口输出与板上的双色灯 D46。
 
 **说明。**
 
-- PS 的 GPIO 引脚号与 MIO 号一致：MIO42 对应引脚号 42。
-- RUN 灯的有效电平尚未由资料确认。若程序中 `level = 1` 时灯灭、`level = 0` 时灯亮，说明为低电平有效，不影响实验结论，在后文的差异表中记录即可。
+- PS 的 GPIO 引脚号与 MIO 号一致：MIO43 对应引脚号 `43`。
+- 实测与原理图（D46、Q2、`SYS_STATUS_LED`）均已确认：Q2 为 NPN 三极管（高电平有效）；D46 为红绿双色灯，红色 `POWER` 常亮，因此绿灯随 `level` 闪烁时表现为**纯红 ↔ 黄绿/橙色**交替，不要误看旁边单独常亮的 `D3`（`PS_DONE`）绿灯。
 
 ## 第四步：PL 流水灯上板（以 VIO 观察）
 
@@ -431,11 +462,12 @@ AXU4EVB-E 的 PL 侧有用户 LED 与按键，可以直接以板载元件观察�
 
 ## 常见问题
 
+- **Vivado 中点击 *Tools → Launch Vitis* 报错 `Vitis IDE launch failed`。** 安装时若仅勾选 *Vivado* 而未选 *Vitis*，安装目录下只有 `Vivado` 与 `Vitis_HLS`，缺少 Vitis IDE，见 [`setup/vivado.md`](../../setup/vivado.md) 通过 *Add Design Tools or Devices* 补装 *Vitis Unified Software Platform*；若已安装仍报错，可从开始菜单或终端单独启动 Vitis 后再导入 XSA。
 - **串口终端没有任何输出。** 依次检查：J13 是否接入（而不是 J1）；终端的端口号与波特率（115200）；`UART 0` 是否勾选在 MIO26..27；SW1 是否为 JTAG 模式。
 - **Vitis 运行时报 DDR 初始化或训练失败。** DDR 参数与板卡容量不符。对照 8 GB 与 4 GB 版本重新核对 *DDR Configuration*。
 - **Hardware Manager 无法识别开发板。** JTAG 驱动未安装，或 USB 设备未直通至虚拟机，见 [`setup/vivado.md`](../../setup/vivado.md) 的「常见问题」；也检查 JTAG 排线与 J1 的引脚是否一一对应，VREF 是否接 3.3 V。
 - **Hardware Manager 中看不到 `hw_vio_1`。** 依次检查：是否已用 Vitis 运行程序（PS 未初始化时 PL 没有时钟）；*Run Configurations* 中是否勾选 *Program FPGA*；*Probes file* 是否指向最新生成的 `.ltx`；导出 XSA 时是否选择了 *Include bitstream*。
-- **RUN 灯不亮。** 先确认串口中程序在循环输出；再将 `level` 取反（有效电平可能为低），仍不亮时核对原理图中 Q2 的接法。
+- **RUN 灯一直常亮或不闪烁。** 依次排查：1）确认没有把常亮的独立绿灯 `D3`（`PS_DONE`）当成 `D46`（红绿双色灯，闪烁时为纯红 ↔ 黄绿/橙色）；2）确认串口已在打印 `n = ..., level = ...`（否则可能是未保存 `helloworld.c` 或未重新 Build）；3）确认 `RUN_LED_PIN` 为 **`43`**（MIO43）而非 `42`（MIO42 为风扇控制 `FAN_CTRL`，写 42 会使 MIO43 保持内部上拉而常亮）；4）确认 Vivado 中已勾选 `GPIO 1 MIO` 并重新导出 XSA / 更新 Platform。
 - **生成比特流时报告 `NSTD-1` 或 `UCIO-1`。** 存在未指定电平标准或引脚的顶层端口。FZ5D 的设计不应出现该错误；若出现，检查 `led_flow` 的端口是否被误引为顶层端口。在 AXU4EVB-E 上则检查 `.xdc`。
 
 ## 附：MYIR 手册的完整 PS 配置（供 S2、S5 复用）
@@ -466,7 +498,8 @@ AXU4EVB-E 的 PL 侧有用户 LED 与按键，可以直接以板载元件观察�
 |---|---|
 | MYIR，*MYS-ZU5EV FPGA 指导手册*（课程内部提供） | 第 3.1 节“第一个工程建立”：Vivado 工程、PS 配置、导出 XSA、Vitis 工程、调试与串口输出 |
 | MYIR，*EdgeBoard AI 计算盒及计算卡硬件说明文档* V1.0（课程内部提供） | 第 3.2 节引导模式与 JTAG 模式选择；第 4.2 节中的调试串口与 JTAG 接口 |
-| MYIR，原理图 `MYS-ZU5EV-32E4D-EDGE` V13（课程内部提供） | RUN 灯电路（D46、Q2、MIO42）；UART0 的连接 |
+| MYIR，原理图 `MYS-ZU5EV-32E4D-EDGE` V13 与 `FZ5_BALL.csv`（课程内部提供） | RUN 灯电路（D46、Q2、MIO43/K19）；UART0 的连接 |
+| MYIR，*MYS-ZU5EV Linux 系统开发指南*（课程内部提供） | 第 6.1–6.2 节设备树 `led_sys` 与 `PS_MIO43` GPIO 编号示例 |
 | AMD，*Zynq UltraScale+ Device Technical Reference Manual*（UG1085） | PS 的结构、MIO 与 EMIO、GPIO 控制器、启动模式 |
 | AMD，*Zynq UltraScale+ MPSoC Processing System LogiCORE IP Product Guide*（PG201） | PS IP 各配置页的含义 |
 | AMD，*Virtual Input/Output LogiCORE IP Product Guide*（PG159） | VIO 核的探针与刷新 |
