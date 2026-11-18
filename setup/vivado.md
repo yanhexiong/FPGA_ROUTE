@@ -46,7 +46,7 @@ Vivado 是 AMD（原 Xilinx）的 FPGA 开发工具，用于完成综合、实�
 ## 安装步骤（两类环境通用）
 
 1. 启动安装程序（启动方式见下一节），使用 AMD 账号登录。
-2. **选择产品**：选择 **Vitis**。Vitis 安装包包含 Vivado、Vitis 与 Vitis HLS，本路线 S1–S4 所需的工具一次安装完成。
+2. **选择产品**：选择 **Vitis**（安装界面全称为 **Vitis Unified Software Platform**）。Vitis 安装包同时包含 Vivado、Vitis IDE 与 Vitis HLS，本路线 S1–S4 所需的工具一次安装完成。**不得只选 Vivado**：后者仅含 Vivado 与 Vitis HLS，不含用于 PS 裸机开发的 Vitis IDE，届时在 Vivado 中执行 *Tools → Launch Vitis* 会报错 `Vitis IDE launch failed`。若已误装为 Vivado，无需卸载重装，可在 Vivado 中选择 **Help → Add Design Tools or Devices**（或从开始菜单运行 **Add Design Tools or Devices 2023.1**）补装 **Vitis Unified Software Platform**，器件仍只保留 Zynq UltraScale+ MPSoC，已有器件库不会重复下载。
 3. **选择器件**：在器件列表中只保留 **Zynq UltraScale+ MPSoC**，取消其余器件系列。器件系列是安装体积的主要来源，只保留所需系列可大幅减少下载量与磁盘占用。后续如需其他器件，可再次运行安装程序追加。
 4. **选择安装目录**：Windows 默认为 `C:\Xilinx`，Linux 默认为 `/tools/Xilinx`，均可保持默认。
 5. **JTAG 驱动**：Windows 安装程序中有安装电缆驱动（cable drivers）的选项，应勾选；Linux 须在安装完成后手动安装，见下一节。
@@ -166,6 +166,7 @@ Windows 用户在 **Vivado 2023.1 Tcl Shell** 中先以 `cd` 进入 `setup` 目�
 - **综合或实现阶段出现无法解释的文件或路径错误。** 检查安装目录与工程目录中是否含有空格或中文字符。
 - **Hardware Manager 找不到下载器。** Windows 上检查电缆驱动是否已安装；Ubuntu 上检查是否执行了 `install_drivers` 并重新插拔；虚拟机中检查 USB 设备是否已直通。
 - **实现阶段进程意外退出。** 通常是内存不足。关闭其他程序，或增加虚拟机的内存分配。
+- **Vivado 菜单 *Tools → Launch Vitis* 报错 `Vitis IDE launch failed`。** 首先确认安装目录（如 `C:\Xilinx\Vitis\2023.1` 或 `/tools/Xilinx/Vitis/2023.1`）是否存在：若只有 `Vivado` 与 `Vitis_HLS`，说明安装时选成了 *Vivado*，按「安装步骤」第 2 条通过 *Add Design Tools or Devices* 补装 *Vitis Unified Software Platform*。若 Vitis 已存在仍无法由 Vivado 菜单调起，可检查 workspace 路径是否含空格或中文，或直接从开始菜单 / 终端单独启动 **Vitis 2023.1**（先运行 `Vitis\2023.1\settings64.bat` 或 `source settings64.sh`，再执行 `vitis`），再手动新建 Platform 并导入 `.xsa`。
 
 ## 参考资料
 
