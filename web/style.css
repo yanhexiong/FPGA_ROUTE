@@ -324,6 +324,7 @@ table.boards { border-collapse: collapse; width: 100%; min-width: 760px; font-si
 .boards tr.pick td { background: var(--net-soft); }
 .boards tr.pick td:first-child { padding-left: 10px; box-shadow: inset 3px 0 0 var(--net); }
 .pick-tag { display: block; font-weight: 500; font-size: 0.8125rem; color: var(--net); }
+.errata-table td:first-child { white-space: normal; min-width: 11em; }
 
 .contract { list-style: none; margin: 0; padding: 0; max-width: 52em; }
 .contract li { border-bottom: 1px solid var(--line); }

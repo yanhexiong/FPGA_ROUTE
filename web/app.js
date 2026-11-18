@@ -406,6 +406,15 @@
       <td>${esc(b.covers)}</td><td>${esc(b.note)}</td></tr>`).join("");
   }
 
+  function renderErrata() {
+    const E = R.errata || [];
+    const tb = $("#errata-rows");
+    if (tb) tb.innerHTML = E.map((e) => `<tr>
+      <td>${esc(e.where)}<span class="pick-tag">${esc(e.date)}</span></td>
+      <td>${esc(e.issue)}</td>
+      <td>${esc(e.fix)}</td></tr>`).join("");
+  }
+
   function renderHarness() {
     const H = R.harness;
     $("#harness-save").textContent = aiSaveTotal();
@@ -585,6 +594,7 @@
     renderStages();
     renderToc();
     renderBoards();
+    renderErrata();
     renderHarness();
     renderVenues();
     renderSkills();
